@@ -1,0 +1,18 @@
+{
+  "name": "reslox",
+  "version": "0.0.0",
+  "bsc-flags": ["-bs-g", "-open Belt"],
+  "sources": {
+    "dir": "src",
+    "subdirs": true
+  },
+  "package-specs": {
+    "module": "commonjs",
+    "in-source": true
+  },
+  "suffix": ".bs.js",
+  "bs-dependencies": [],
+  "warnings": {
+    "error": "+101"
+  }
+}

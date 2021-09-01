@@ -1,0 +1,13 @@
+{
+  "name": "reslox",
+  "version": "0.0.0",
+  "license": "MIT",
+  "scripts": {
+    "build": "rescript build",
+    "clean": "rescript clean",
+    "start": "rescript build -w"
+  },
+  "devDependencies": {
+    "rescript": "^9.1.4"
+  }
+}
