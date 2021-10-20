@@ -1,11 +1,15 @@
+let run = source => {
+  Js.log(source)
+}
+
 let runFile = path => {
   let source = Node.Fs.readFileAsUtf8Sync(path)
-  Js.log(source)
+  run(source)
 }
 
 let runPrompt = () => {
   let lineHandler = line => {
-    Js.log(line)
+    run(line)
   }
 
   let () = Readline.onLine(~prompt="> ", lineHandler)

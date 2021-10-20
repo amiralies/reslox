@@ -4,10 +4,11 @@ type inChannel
 
 @val @scope("process")
 external stdin: inChannel = "stdin"
-type interfaceOptions = {
-  input: inChannel,
-  prompt: string,
-}
+
+@val @scope("process.stdout")
+external stdoutWrite: string => unit = "write"
+
+type interfaceOptions = {input: inChannel}
 
 @module("readline")
 external createInterface: interfaceOptions => interface = "createInterface"
@@ -15,10 +16,20 @@ external createInterface: interfaceOptions => interface = "createInterface"
 @send
 external on: (interface, @string [#line(string => unit)]) => interface = "on"
 
+@send
+external prompt: interface => unit = "prompt"
+
 // Custom api
 let onLine = (~prompt, onLine) => {
-  let _ = createInterface({
+  let interface = createInterface({
     input: stdin,
-    prompt: prompt,
-  })->on(#line(onLine))
+  })
+  stdoutWrite(prompt)
+
+  let enhancedOnLine = line => {
+    onLine(line)
+    stdoutWrite(prompt)
+  }
+
+  let _ = interface->on(#line(enhancedOnLine))
 }
