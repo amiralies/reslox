@@ -1,8 +1,15 @@
 let hadError = ref(false)
 
-let run = source => {
-  Js.log(source)
-}
+let run = source =>
+  source
+  ->Lexer.scanTokens
+  ->Result.map(tokens =>
+    tokens
+    ->List.toArray
+    ->Array.map(located => located.value->Token.toString)
+    ->Array.joinWith(_, ", ", x => x)
+  )
+  ->Js.log
 
 let runFile = path => {
   let source = Node.Fs.readFileAsUtf8Sync(path)
