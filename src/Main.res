@@ -4,11 +4,9 @@ let run = source =>
   source
   ->Lexer.scanTokens
   ->Result.map(tokens =>
-    tokens
-    ->List.toArray
-    ->Array.map(located => located.value->Token.toString)
-    ->Array.joinWith(_, ", ", x => x)
+    tokens->List.toArray->Parser.make->Parser.parse->Result.map(AstPrinter.print)->Result.getExn
   )
+  ->Result.getExn
   ->Js.log
 
 let runFile = path => {

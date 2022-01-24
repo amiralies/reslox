@@ -45,7 +45,7 @@ type t =
   | EOF
 
 type located = {
-  value: t,
+  typ: t,
   line: int,
 }
 

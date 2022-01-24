@@ -1,0 +1,37 @@
+let rec print = expr =>
+  switch expr {
+  | Expr.Binary(left, op, right) => parenthesize(printBinaryOp(op), list{left, right})
+  | Grouping(expr) => parenthesize("group", list{expr})
+  | Literal(literal) => printLiteral(literal)
+  | Unary(op, expr) => parenthesize(printUnaryOp(op), list{expr})
+  }
+and parenthesize = (name: string, exprs: list<Expr.t>) => {
+  let exprsJoined = exprs->List.map(print)->String.concat(" ", _)
+  `(${name} ${exprsJoined})`
+}
+and printBinaryOp = op =>
+  switch op {
+  | Equal => "=="
+  | NotEqual => "!="
+  | LessThan => "<"
+  | LessThanEqual => "<="
+  | GreaterThan => ">"
+  | GreaterThanEqual => ">="
+  | Add => "+"
+  | Sub => "-"
+  | Mul => "*"
+  | Div => "/"
+  }
+
+and printLiteral = literal =>
+  switch literal {
+  | String(str) => `"${str}"`
+  | Number(number) => Float.toString(number)
+  | Bool(b) => b ? "true" : "false"
+  | Nil => "nil"
+  }
+and printUnaryOp = op =>
+  switch op {
+  | Negative => "-"
+  | Not => "!"
+  }

@@ -60,7 +60,7 @@ let match = (expected, lexer) =>
   }
 
 let emitLocatedToken = (token, {line}) => LocatedToken({
-  value: token,
+  typ: token,
   line: line,
 })
 
@@ -247,7 +247,7 @@ let scanTokens: string => result<list<Token.located>, lexerError> = source => {
     | LocatedToken(locatedToken) => loop(list{locatedToken, ...acc})
     | Skip => loop(acc)
     | EndReached =>
-      let eof = {value: EOF, line: lexer.line}
+      let eof = {typ: EOF, line: lexer.line}
       let tokens = list{eof, ...acc}->List.reverse
 
       Ok(tokens)
