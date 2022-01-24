@@ -35,7 +35,22 @@ let consumeIfOrRaise = (parser, p, message) =>
     raise(ParseError(message))
   }
 
-let rec expression = parser => equality(parser)
+let rec expression = parser => commaSequence(parser)
+and commaSequence = parser => {
+  let expr = equality(parser)
+
+  let rec loop = left =>
+    switch peek(parser).typ {
+    | Comma =>
+      advance(parser)
+      let right = equality(parser)
+      loop(Expr.Binary(left, CommaSequence, right))
+
+    | _ => left
+    }
+
+  loop(expr)
+}
 and equality = parser => {
   let expr = comparison(parser)
 

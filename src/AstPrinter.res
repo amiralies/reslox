@@ -21,6 +21,7 @@ and printBinaryOp = op =>
   | Sub => "-"
   | Mul => "*"
   | Div => "/"
+  | CommaSequence => ","
   }
 
 and printLiteral = literal =>

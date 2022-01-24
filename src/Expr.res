@@ -19,4 +19,5 @@ and binaryOperator =
   | Sub
   | Mul
   | Div
+  | CommaSequence
 and unaryOperator = Negative | Not
