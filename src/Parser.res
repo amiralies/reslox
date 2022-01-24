@@ -21,13 +21,6 @@ let advance = parser =>
     parser.current = parser.current + 1
   }
 
-let check = (parser, token) =>
-  if isAtEnd(parser) {
-    false
-  } else {
-    peek(parser).typ == token
-  }
-
 let consumeIfOrRaise = (parser, p, message) =>
   if p(peek(parser).typ) {
     advance(parser)
@@ -186,7 +179,7 @@ and primary = parser =>
   | _ => raise(ParseError("Expected expression"))
   }
 
-let synchronize = parser => {
+let _synchronize = parser => {
   advance(parser)
 
   let rec loop = parser =>
