@@ -8,9 +8,11 @@ type t =
   | Dot
   | Minus
   | Plus
+  | Colon
   | SemiColon
   | Slash
   | Star
+  | Question
   // One or two character tokens
   | Bang
   | BangEqual
@@ -79,9 +81,11 @@ let toString = t =>
   | Dot => "Dot"
   | Minus => "Minus"
   | Plus => "Plus"
+  | Colon => "Colon"
   | SemiColon => "SemiColon"
   | Slash => "Slash"
   | Star => "Star"
+  | Question => "Question"
   | Bang => "Bang"
   | BangEqual => "BangEqual"
   | Equal => "Equal"
