@@ -193,7 +193,7 @@ let scanToken = lexer =>
     | ':' => Colon->emitLocatedToken(lexer)
     | ';' => SemiColon->emitLocatedToken(lexer)
     | '*' => Star->emitLocatedToken(lexer)
-    | '?' => Colon->emitLocatedToken(lexer)
+    | '?' => Question->emitLocatedToken(lexer)
     | '!' =>
       if match('=', lexer) {
         BangEqual->emitLocatedToken(lexer)
