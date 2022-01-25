@@ -4,6 +4,7 @@ let rec print = expr =>
   | Grouping(expr) => parenthesize("group", list{expr})
   | Literal(literal) => printLiteral(literal)
   | Unary(op, expr) => parenthesize(printUnaryOp(op), list{expr})
+  | Conditional(condition, then, else_) => parenthesize("?:", list{condition, then, else_})
   }
 and parenthesize = (name: string, exprs: list<Expr.t>) => {
   let exprsJoined = exprs->List.map(print)->String.concat(" ", _)

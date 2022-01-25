@@ -3,6 +3,7 @@ type rec t =
   | Grouping(t)
   | Literal(literal)
   | Unary(unaryOperator, t)
+  | Conditional(t, t, t)
 and literal =
   | String(string)
   | Number(float)
