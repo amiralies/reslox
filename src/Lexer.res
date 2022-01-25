@@ -190,8 +190,10 @@ let scanToken = lexer =>
     | '.' => Dot->emitLocatedToken(lexer)
     | '-' => Minus->emitLocatedToken(lexer)
     | '+' => Plus->emitLocatedToken(lexer)
+    | ':' => Colon->emitLocatedToken(lexer)
     | ';' => SemiColon->emitLocatedToken(lexer)
     | '*' => Star->emitLocatedToken(lexer)
+    | '?' => Colon->emitLocatedToken(lexer)
     | '!' =>
       if match('=', lexer) {
         BangEqual->emitLocatedToken(lexer)
