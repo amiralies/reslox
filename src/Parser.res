@@ -30,14 +30,31 @@ let consumeIfOrRaise = (parser, p, message) =>
 
 let rec expression = parser => commaSequence(parser)
 and commaSequence = parser => {
-  let expr = equality(parser)
+  let expr = conditional(parser)
 
   let rec loop = left =>
     switch peek(parser).typ {
     | Comma =>
       advance(parser)
-      let right = equality(parser)
+      let right = conditional(parser)
       loop(Expr.Binary(left, CommaSequence, right))
+
+    | _ => left
+    }
+
+  loop(expr)
+}
+and conditional = parser => {
+  let expr = equality(parser)
+
+  let rec loop = left =>
+    switch peek(parser).typ {
+    | Question =>
+      advance(parser)
+      let middle = conditional(parser)
+      consumeIfOrRaise(parser, peek => peek == Colon, "Expected ':' after expression")
+      let right = conditional(parser)
+      loop(Expr.Conditional(left, middle, right))
 
     | _ => left
     }
