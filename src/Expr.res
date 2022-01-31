@@ -1,10 +1,10 @@
 type rec t =
   | Binary(t, binaryOperator, t)
   | Grouping(t)
-  | Literal(literal)
+  | Literal(value)
   | Unary(unaryOperator, t)
   | Conditional(t, t, t)
-and literal =
+and value =
   | String(string)
   | Number(float)
   | Bool(bool)
