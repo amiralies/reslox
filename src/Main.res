@@ -4,7 +4,13 @@ let run = source =>
   source
   ->Lexer.scanTokens
   ->Result.map(tokens =>
-    tokens->List.toArray->Parser.make->Parser.parse->Result.map(AstPrinter.print)->Result.getExn
+    tokens
+    ->List.toArray
+    ->Parser.make
+    ->Parser.parse
+    ->Result.flatMap(Interpreter.interpret)
+    ->Result.map(Expr.printValue)
+    ->Result.getExn
   )
   ->Result.getExn
   ->Js.log
