@@ -1,8 +1,8 @@
 open Token
 
 type lexer = {
-  mutable current: int,
   mutable start: int,
+  mutable current: int,
   mutable line: int,
   source: string,
 }
@@ -13,14 +13,14 @@ type lexerError =
   | UnterminatedMultiLineComment
 
 type singleScanResult =
-  | LocatedToken(located)
+  | LocatedToken(Location.located<Token.t>)
   | SingleScanError(lexerError)
   | Skip
   | EndReached
 
 let makeLexer = source => {
-  current: 0,
   start: 0,
+  current: 0,
   line: 1,
   source: source,
 }
@@ -55,13 +55,23 @@ let match = (expected, lexer) =>
   switch peek(lexer) {
   | Some(c) if c == expected =>
     lexer.current = lexer.current + 1
+
     true
   | Some(_) | None => false
   }
 
-let emitLocatedToken = (token, {line}) => LocatedToken({
-  typ: token,
-  line: line,
+let emitLocatedToken = (token, lexer) => LocatedToken({
+  val: token,
+  loc: {
+    start: {
+      line: lexer.line,
+      col: 0,
+    },
+    end: {
+      line: lexer.line,
+      col: 0,
+    },
+  },
 })
 
 let isDigit = c =>
@@ -239,7 +249,7 @@ let scanToken = lexer =>
     }
   )
 
-let scanTokens: string => result<list<Token.located>, lexerError> = source => {
+let scanTokens: string => result<list<Location.located<Token.t>>, lexerError> = source => {
   let lexer = makeLexer(source)
   let rec loop = acc => {
     lexer.start = lexer.current
@@ -249,7 +259,19 @@ let scanTokens: string => result<list<Token.located>, lexerError> = source => {
     | LocatedToken(locatedToken) => loop(list{locatedToken, ...acc})
     | Skip => loop(acc)
     | EndReached =>
-      let eof = {typ: EOF, line: lexer.line}
+      let eof = {
+        Location.val: EOF,
+        loc: {
+          start: {
+            col: 0,
+            line: lexer.line,
+          },
+          end: {
+            col: 0,
+            line: lexer.line,
+          },
+        },
+      }
       let tokens = list{eof, ...acc}->List.reverse
 
       Ok(tokens)

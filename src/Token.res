@@ -46,11 +46,6 @@ type t =
   // EOF
   | EOF
 
-type located = {
-  typ: t,
-  line: int,
-}
-
 let keywordMap =
   [
     ("and", And),

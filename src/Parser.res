@@ -1,5 +1,5 @@
 type t = {
-  tokens: array<Token.located>,
+  tokens: array<Location.located<Token.t>>,
   mutable current: int,
 }
 open Token
@@ -14,7 +14,7 @@ exception ParseError(string)
 
 let peek = ({tokens, current}) => Array.getUnsafe(tokens, current)
 
-let isAtEnd = parser => peek(parser).typ == EOF
+let isAtEnd = parser => peek(parser).val == EOF
 
 let advance = parser =>
   if !isAtEnd(parser) {
@@ -22,7 +22,7 @@ let advance = parser =>
   }
 
 let consumeIfOrRaise = (parser, p, message) =>
-  if p(peek(parser).typ) {
+  if p(peek(parser).val) {
     advance(parser)
   } else {
     raise(ParseError(message))
@@ -33,7 +33,7 @@ and commaSequence = parser => {
   let expr = conditional(parser)
 
   let rec loop = left =>
-    switch peek(parser).typ {
+    switch peek(parser).val {
     | Comma =>
       advance(parser)
       let right = conditional(parser)
@@ -48,7 +48,7 @@ and conditional = parser => {
   let expr = equality(parser)
 
   let rec loop = left =>
-    switch peek(parser).typ {
+    switch peek(parser).val {
     | Question =>
       advance(parser)
       let middle = conditional(parser)
@@ -65,7 +65,7 @@ and equality = parser => {
   let expr = comparison(parser)
 
   let rec loop = left =>
-    switch peek(parser).typ {
+    switch peek(parser).val {
     | BangEqual =>
       advance(parser)
       let right = comparison(parser)
@@ -85,7 +85,7 @@ and comparison = parser => {
   let expr = term(parser)
 
   let rec loop = left =>
-    switch peek(parser).typ {
+    switch peek(parser).val {
     | Greater =>
       advance(parser)
       let right = term(parser)
@@ -115,7 +115,7 @@ and term = parser => {
   let expr = factor(parser)
 
   let rec loop = left =>
-    switch peek(parser).typ {
+    switch peek(parser).val {
     | Plus =>
       advance(parser)
       let right = factor(parser)
@@ -135,7 +135,7 @@ and factor = parser => {
   let expr = unary(parser)
 
   let rec loop = left =>
-    switch peek(parser).typ {
+    switch peek(parser).val {
     | Star =>
       advance(parser)
       let right = unary(parser)
@@ -152,7 +152,7 @@ and factor = parser => {
   loop(expr)
 }
 and unary = parser =>
-  switch peek(parser).typ {
+  switch peek(parser).val {
   | Bang =>
     advance(parser)
     let right = unary(parser)
@@ -167,7 +167,7 @@ and unary = parser =>
   }
 
 and primary = parser =>
-  switch peek(parser).typ {
+  switch peek(parser).val {
   | True =>
     advance(parser)
     Expr.Literal(Bool(true))
@@ -203,11 +203,11 @@ let _synchronize = parser => {
     if isAtEnd(parser) {
       ()
     } else {
-      let maybePrevToken = parser.tokens[parser.current - 1]->Option.map(({typ}) => typ)
+      let maybePrevToken = parser.tokens[parser.current - 1]->Option.map(({val}) => val)
       if maybePrevToken == Some(SemiColon) {
         ()
       } else {
-        switch peek(parser).typ {
+        switch peek(parser).val {
         | Class
         | Fun
         | Var
