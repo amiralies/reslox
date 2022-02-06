@@ -1,9 +1,12 @@
 open Token
 
 type lexer = {
-  mutable start: int,
-  mutable current: int,
-  mutable line: int,
+  mutable startIndex: int,
+  mutable currentIndex: int,
+  mutable startLine: int,
+  mutable currentLine: int,
+  mutable startCol: int,
+  mutable currentCol: int,
   source: string,
 }
 
@@ -19,22 +22,25 @@ type singleScanResult =
   | EndReached
 
 let makeLexer = source => {
-  start: 0,
-  current: 0,
-  line: 1,
+  startIndex: 0,
+  currentIndex: 0,
+  currentLine: 1,
+  startLine: 1,
+  currentCol: 1,
+  startCol: 1,
   source: source,
 }
 
-let isAtEnd = lexer => lexer.current >= String.length(lexer.source)
+let isAtEnd = lexer => lexer.currentIndex >= String.length(lexer.source)
 
 let peek = lexer =>
-  switch String.get(lexer.source, lexer.current) {
+  switch String.get(lexer.source, lexer.currentIndex) {
   | c => Some(c)
   | exception _ => None
   }
 
 let peekNext = lexer =>
-  switch String.get(lexer.source, lexer.current + 1) {
+  switch String.get(lexer.source, lexer.currentIndex + 1) {
   | c => Some(c)
   | exception _ => None
   }
@@ -42,7 +48,8 @@ let peekNext = lexer =>
 let advance = lexer =>
   switch peek(lexer) {
   | Some(_) as maybeCurrentChar =>
-    lexer.current = lexer.current + 1
+    lexer.currentIndex = lexer.currentIndex + 1
+    lexer.currentCol = lexer.currentCol + 1
     maybeCurrentChar
   | None => None
   }
@@ -51,10 +58,15 @@ let advanceDiscard = lexer => {
   let _: option<char> = advance(lexer)
 }
 
+let advanceLineOnly = lexer => {
+  lexer.currentLine = lexer.currentLine + 1
+  lexer.currentCol = 1
+}
+
 let match = (expected, lexer) =>
   switch peek(lexer) {
   | Some(c) if c == expected =>
-    lexer.current = lexer.current + 1
+    lexer.currentIndex = lexer.currentIndex + 1
 
     true
   | Some(_) | None => false
@@ -64,12 +76,12 @@ let emitLocatedToken = (token, lexer) => LocatedToken({
   val: token,
   loc: {
     start: {
-      line: lexer.line,
-      col: 0,
+      line: lexer.startLine,
+      col: lexer.startCol,
     },
     end: {
-      line: lexer.line,
-      col: 0,
+      line: lexer.currentLine,
+      col: lexer.currentCol - 1,
     },
   },
 })
@@ -114,10 +126,10 @@ let skipMultiLineComment = lexer => {
       advanceDiscard(lexer)
       aux(level + 1, lexer)
     | Some(c) =>
-      if c == '\n' {
-        lexer.line = lexer.line + 1
-      }
       advanceDiscard(lexer)
+      if c == '\n' {
+        advanceLineOnly(lexer)
+      }
       aux(level, lexer)
     | None => SingleScanError(UnterminatedMultiLineComment)
     }
@@ -132,16 +144,16 @@ let rec scanString = lexer =>
   | Some('"') =>
     let value = StringLabels.sub(
       lexer.source,
-      ~len=lexer.current - lexer.start - 1,
-      ~pos=lexer.start + 1,
+      ~len=lexer.currentIndex - lexer.startIndex - 1,
+      ~pos=lexer.startIndex + 1,
     )
     advanceDiscard(lexer)
     emitLocatedToken(String(value), lexer)
   | Some(c) =>
-    if c == '\n' {
-      lexer.line = lexer.line + 1
-    }
     advanceDiscard(lexer)
+    if c == '\n' {
+      advanceLineOnly(lexer)
+    }
     scanString(lexer)
   }
 
@@ -165,7 +177,11 @@ let scanNumber = lexer => {
   | _ => ()
   }
 
-  let rawValue = StringLabels.sub(lexer.source, ~pos=lexer.start, ~len=lexer.current - lexer.start)
+  let rawValue = StringLabels.sub(
+    lexer.source,
+    ~pos=lexer.startIndex,
+    ~len=lexer.currentIndex - lexer.startIndex,
+  )
   let value = rawValue->Float.fromString->Option.getExn
   emitLocatedToken(Number(value), lexer)
 }
@@ -177,7 +193,11 @@ let rec scanIdentOrKeyword = lexer =>
     scanIdentOrKeyword(lexer)
   | Some(_)
   | None =>
-    let value = StringLabels.sub(lexer.source, ~pos=lexer.start, ~len=lexer.current - lexer.start)
+    let value = StringLabels.sub(
+      lexer.source,
+      ~pos=lexer.startIndex,
+      ~len=lexer.currentIndex - lexer.startIndex,
+    )
 
     let token = switch Map.String.get(Token.keywordMap, value) {
     | Some(keyword) => keyword
@@ -239,7 +259,7 @@ let scanToken = lexer =>
       }
     | ' ' | '\t' | '\r' => Skip
     | '\n' =>
-      lexer.line = lexer.line + 1
+      advanceLineOnly(lexer)
       Skip
 
     | '"' => scanString(lexer)
@@ -252,7 +272,9 @@ let scanToken = lexer =>
 let scanTokens: string => result<list<Location.located<Token.t>>, lexerError> = source => {
   let lexer = makeLexer(source)
   let rec loop = acc => {
-    lexer.start = lexer.current
+    lexer.startIndex = lexer.currentIndex
+    lexer.startLine = lexer.currentLine
+    lexer.startCol = lexer.currentCol
 
     switch scanToken(lexer) {
     | SingleScanError(err) => Error(err)
@@ -263,12 +285,12 @@ let scanTokens: string => result<list<Location.located<Token.t>>, lexerError> = 
         Location.val: EOF,
         loc: {
           start: {
-            col: 0,
-            line: lexer.line,
+            col: lexer.currentCol,
+            line: lexer.currentLine,
           },
           end: {
-            col: 0,
-            line: lexer.line,
+            col: lexer.currentCol,
+            line: lexer.currentLine,
           },
         },
       }
