@@ -3,16 +3,14 @@ let hadError = ref(false)
 let run = source =>
   source
   ->Lexer.scanTokens
-  ->Result.map(tokens =>
-    tokens
-    ->List.toArray
-    ->Parser.make
-    ->Parser.parse
-    ->Result.flatMap(Interpreter.interpret)
-    ->Result.map(Expr.printValue)
-    ->Result.getExn
-  )
   ->Result.getExn
+  ->List.toArray
+  ->Parser.make
+  ->Parser.parse
+  ->Result.getExn
+  ->Interpreter.interpret
+  ->Result.getExn
+  ->Expr.printValue
   ->Js.log
 
 let runFile = path => {
