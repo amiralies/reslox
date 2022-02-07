@@ -2,4 +2,4 @@ type t
 
 let make: array<Location.located<Token.t>> => t
 
-let parse: t => result<Expr.t, string>
+let parse: t => result<Expr.t, (string, Location.t)>

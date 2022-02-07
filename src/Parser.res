@@ -13,7 +13,7 @@ let make = tokens => {
 }
 
 // type parseError = ParseError
-exception ParseError(string)
+exception ParseError(string, Location.t)
 
 let peek = ({tokens, current}) => Array.getUnsafe(tokens, current)
 
@@ -30,7 +30,7 @@ let consumeIfOrRaise = (parser, p, message) =>
     advance(parser)
     token
   } else {
-    raise(ParseError(message))
+    raise(ParseError(message, peek(parser).loc))
   }
 
 let rec expression = parser => commaSequence(parser)
@@ -221,7 +221,7 @@ and primary = parser =>
 
     Helper.makeGrouping(~loc, expr)
 
-  | _ => raise(ParseError("Expected expression"))
+  | _ => raise(ParseError("Expected expression", peek(parser).loc))
   }
 
 let _synchronize = parser => {
@@ -257,5 +257,5 @@ let _synchronize = parser => {
 let parse = parser =>
   switch expression(parser) {
   | ast => Ok(ast)
-  | exception ParseError(parseError) => Error(parseError)
+  | exception ParseError(message, loc) => Error(message, loc)
   }
