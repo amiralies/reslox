@@ -3,6 +3,9 @@ type t = {
   mutable current: int,
 }
 open Token
+open Location
+
+module Helper = Expr.Helpr
 
 let make = tokens => {
   tokens: tokens,
@@ -23,7 +26,9 @@ let advance = parser =>
 
 let consumeIfOrRaise = (parser, p, message) =>
   if p(peek(parser).val) {
+    let token = peek(parser)
     advance(parser)
+    token
   } else {
     raise(ParseError(message))
   }
@@ -37,7 +42,7 @@ and commaSequence = parser => {
     | Comma =>
       advance(parser)
       let right = conditional(parser)
-      loop(Expr.Binary(left, CommaSequence, right))
+      loop(Helper.makeBinary(left, CommaSequence, right))
 
     | _ => left
     }
@@ -52,9 +57,14 @@ and conditional = parser => {
     | Question =>
       advance(parser)
       let middle = conditional(parser)
-      consumeIfOrRaise(parser, peek => peek == Colon, "Expected ':' after expression")
+      let _: Location.located<Token.t> = consumeIfOrRaise(
+        parser,
+        peek => peek == Colon,
+        "Expected ':' after expression",
+      )
       let right = conditional(parser)
-      loop(Expr.Conditional(left, middle, right))
+      let loc = {start: left.loc.start, end: right.loc.end}
+      loop(Helper.makeConditional(~loc, left, middle, right))
 
     | _ => left
     }
@@ -69,12 +79,12 @@ and equality = parser => {
     | BangEqual =>
       advance(parser)
       let right = comparison(parser)
-      loop(Expr.Binary(left, NotEqual, right))
+      loop(Helper.makeBinary(left, NotEqual, right))
 
     | EqualEqual =>
       advance(parser)
       let right = comparison(parser)
-      loop(Expr.Binary(left, Equal, right))
+      loop(Helper.makeBinary(left, Equal, right))
 
     | _ => left
     }
@@ -89,22 +99,22 @@ and comparison = parser => {
     | Greater =>
       advance(parser)
       let right = term(parser)
-      loop(Expr.Binary(left, GreaterThan, right))
+      loop(Helper.makeBinary(left, GreaterThan, right))
 
     | GreaterEqual =>
       advance(parser)
       let right = term(parser)
-      loop(Expr.Binary(left, GreaterThanEqual, right))
+      loop(Helper.makeBinary(left, GreaterThanEqual, right))
 
     | Less =>
       advance(parser)
       let right = term(parser)
-      loop(Expr.Binary(left, LessThan, right))
+      loop(Helper.makeBinary(left, LessThan, right))
 
     | LessEqual =>
       advance(parser)
       let right = term(parser)
-      loop(Expr.Binary(left, LessThanEqual, right))
+      loop(Helper.makeBinary(left, LessThanEqual, right))
 
     | _ => left
     }
@@ -119,12 +129,12 @@ and term = parser => {
     | Plus =>
       advance(parser)
       let right = factor(parser)
-      loop(Expr.Binary(left, Add, right))
+      loop(Helper.makeBinary(left, Add, right))
 
     | Minus =>
       advance(parser)
       let right = factor(parser)
-      loop(Expr.Binary(left, Sub, right))
+      loop(Helper.makeBinary(left, Sub, right))
 
     | _ => left
     }
@@ -139,12 +149,12 @@ and factor = parser => {
     | Star =>
       advance(parser)
       let right = unary(parser)
-      loop(Expr.Binary(left, Mul, right))
+      loop(Helper.makeBinary(left, Mul, right))
 
     | Slash =>
       advance(parser)
       let right = unary(parser)
-      loop(Expr.Binary(left, Div, right))
+      loop(Helper.makeBinary(left, Div, right))
 
     | _ => left
     }
@@ -154,14 +164,18 @@ and factor = parser => {
 and unary = parser =>
   switch peek(parser).val {
   | Bang =>
+    let startLoc = peek(parser).loc.start
     advance(parser)
     let right = unary(parser)
-    Expr.Unary(Not, right)
+    let loc = {start: startLoc, end: right.loc.end}
+    Helper.makeUnary(~loc, Not, right)
 
   | Minus =>
+    let startLoc = peek(parser).loc.start
     advance(parser)
     let right = unary(parser)
-    Expr.Unary(Negative, right)
+    let loc = {start: startLoc, end: right.loc.end}
+    Helper.makeUnary(~loc, Negative, right)
 
   | _ => primary(parser)
   }
@@ -169,29 +183,43 @@ and unary = parser =>
 and primary = parser =>
   switch peek(parser).val {
   | True =>
+    let {loc} = peek(parser)
     advance(parser)
-    Expr.Literal(Bool(true))
+    Helper.makeLiteral(~loc, Bool(true))
 
   | False =>
+    let {loc} = peek(parser)
     advance(parser)
-    Expr.Literal(Bool(false))
+    Helper.makeLiteral(~loc, Bool(false))
 
   | Number(value) =>
+    let {loc} = peek(parser)
     advance(parser)
-    Expr.Literal(Number(value))
+    Helper.makeLiteral(~loc, Number(value))
 
   | String(value) =>
+    let {loc} = peek(parser)
     advance(parser)
-    Expr.Literal(String(value))
+    Helper.makeLiteral(~loc, String(value))
 
   | Nil =>
+    let {loc} = peek(parser)
     advance(parser)
-    Expr.Literal(Nil)
+    Helper.makeLiteral(~loc, Nil)
+
   | LeftParen =>
+    let {loc: {start: startLoc}} = peek(parser)
     advance(parser)
     let expr = expression(parser)
-    consumeIfOrRaise(parser, peek => peek == RightParen, "Expected a right paren")
-    Expr.Grouping(expr)
+    let consumedRParen = consumeIfOrRaise(
+      parser,
+      peek => peek == RightParen,
+      "Expected a right paren",
+    )
+    let endLoc = consumedRParen.loc.end
+    let loc = {start: startLoc, end: endLoc}
+
+    Helper.makeGrouping(~loc, expr)
 
   | _ => raise(ParseError("Expected expression"))
   }

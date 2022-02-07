@@ -37,7 +37,13 @@ let printValue = value =>
 module Helpr = {
   let make = (~loc, expr) => {val: expr, loc: loc}
 
-  let makeBinary = (~loc, left, op, right) => make(~loc, Binary(left, right, op))
+  let makeBinary = (left, op, right) => {
+    let loc = {
+      start: left.loc.start,
+      end: right.loc.end,
+    }
+    make(~loc, Binary(left, op, right))
+  }
   let makeGrouping = (~loc, inner) => make(~loc, Grouping(inner))
   let makeLiteral = (~loc, value) => make(~loc, Literal(value))
   let makeUnary = (~loc, op, right) => make(~loc, Unary(op, right))

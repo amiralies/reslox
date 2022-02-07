@@ -21,7 +21,7 @@ let applyComparisonOrRaise = (left, right, p) =>
   }
 
 let rec eval: Expr.t => Expr.value = expr =>
-  switch expr {
+  switch expr.val {
   | Binary(left, op, right) =>
     let leftValue = eval(left)
     let rightValue = eval(right)

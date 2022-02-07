@@ -1,5 +1,7 @@
+open Location
+
 let rec print = expr =>
-  switch expr {
+  switch expr.val {
   | Expr.Binary(left, op, right) => parenthesize(printBinaryOp(op), list{left, right})
   | Grouping(expr) => parenthesize("group", list{expr})
   | Literal(literal) => printLiteral(literal)
