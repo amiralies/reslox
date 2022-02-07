@@ -1,4 +1,7 @@
-type rec t =
+open Location
+
+type rec t = located<expr>
+and expr =
   | Binary(t, binaryOperator, t)
   | Grouping(t)
   | Literal(value)
@@ -30,3 +33,14 @@ let printValue = value =>
   | Bool(b) => b ? "true" : "false"
   | Nil => "nil"
   }
+
+module Helpr = {
+  let make = (~loc, expr) => {val: expr, loc: loc}
+
+  let makeBinary = (~loc, left, op, right) => make(~loc, Binary(left, right, op))
+  let makeGrouping = (~loc, inner) => make(~loc, Grouping(inner))
+  let makeLiteral = (~loc, value) => make(~loc, Literal(value))
+  let makeUnary = (~loc, op, right) => make(~loc, Unary(op, right))
+  let makeConditional = (~loc, condition, then, else_) =>
+    make(~loc, Conditional(condition, then, else_))
+}
