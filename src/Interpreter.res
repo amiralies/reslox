@@ -1,4 +1,4 @@
-exception EvalError(string)
+exception EvalError(string, Location.t)
 
 open Expr
 let isTruthy = value =>
@@ -8,16 +8,16 @@ let isTruthy = value =>
   | Number(_) | String(_) => true
   }
 
-let applyArthimaticOrRaise = (left, right, f) =>
+let applyArthimaticOrRaise = (opLoc, left, right, f) =>
   switch (left, right) {
   | (Number(left), Number(right)) => Number(f(left, right))
-  | _ => raise(EvalError("Operands should be numbers"))
+  | _ => raise(EvalError("Operands should be numbers", opLoc))
   }
 
-let applyComparisonOrRaise = (left, right, p) =>
+let applyComparisonOrRaise = (opLoc, left, right, p) =>
   switch (left, right) {
   | (Number(left), Number(right)) => Bool(p(left, right))
-  | _ => raise(EvalError("Operands should be numbers"))
+  | _ => raise(EvalError("Operands should be numbers", opLoc))
   }
 
 let rec eval: Expr.t => Expr.value = expr =>
@@ -27,7 +27,7 @@ let rec eval: Expr.t => Expr.value = expr =>
     let rightValue = eval(right)
     evalBinary(leftValue, op, rightValue)
   | Grouping(expr) => eval(expr)
-  | Literal(value) => value
+  | Literal(value) => value.val
   | Unary(op, right) =>
     let rightValue = eval(right)
 
@@ -38,33 +38,33 @@ let rec eval: Expr.t => Expr.value = expr =>
     evalConditional(condValue, then, else_)
   }
 
-and evalBinary = (left, op, right) =>
+and evalBinary = (left, {val: op, loc: opLoc}, right) =>
   switch op {
-  | Sub => applyArthimaticOrRaise(left, right, (l, r) => l -. r)
-  | Div => applyArthimaticOrRaise(left, right, (l, r) => l /. r) // TODO Division by zero
-  | Mul => applyArthimaticOrRaise(left, right, (l, r) => l *. r)
+  | Sub => applyArthimaticOrRaise(opLoc, left, right, (l, r) => l -. r)
+  | Div => applyArthimaticOrRaise(opLoc, left, right, (l, r) => l /. r) // TODO Division by zero
+  | Mul => applyArthimaticOrRaise(opLoc, left, right, (l, r) => l *. r)
   | Add =>
     switch (left, right) {
     | (Number(left), Number(right)) => Number(left +. right)
     | (String(left), String(right)) => String(left ++ right)
-    | _ => raise(EvalError("Both operands should be numbers or strings"))
+    | _ => raise(EvalError("Both operands should be numbers or strings", opLoc))
     }
-  | GreaterThan => applyComparisonOrRaise(left, right, (l, r) => l > r)
-  | GreaterThanEqual => applyComparisonOrRaise(left, right, (l, r) => l >= r)
-  | LessThan => applyComparisonOrRaise(left, right, (l, r) => l < r)
-  | LessThanEqual => applyComparisonOrRaise(left, right, (l, r) => l <= r)
+  | GreaterThan => applyComparisonOrRaise(opLoc, left, right, (l, r) => l > r)
+  | GreaterThanEqual => applyComparisonOrRaise(opLoc, left, right, (l, r) => l >= r)
+  | LessThan => applyComparisonOrRaise(opLoc, left, right, (l, r) => l < r)
+  | LessThanEqual => applyComparisonOrRaise(opLoc, left, right, (l, r) => l <= r)
   | Equal => Bool(left == right)
   | NotEqual => Bool(left != right)
   | CommaSequence => right
   }
 
-and evalUnary = (op, right) =>
+and evalUnary = ({val: op, loc: opLoc}, right) =>
   switch op {
   | Negative =>
     switch right {
     | Number(number) => Number(-.number)
     | String(_) | Bool(_) | Nil =>
-      raise(EvalError("Can't use unary '-' operator on non-number values"))
+      raise(EvalError("Can't use unary '-' operator on non-number values", opLoc))
     }
 
   | Not => Bool(!isTruthy(right))
@@ -81,5 +81,5 @@ and evalConditional = (cond, then, else_) => {
 let interpret = expr =>
   switch eval(expr) {
   | value => Ok(value)
-  | exception EvalError(message) => Error(message)
+  | exception EvalError(message, loc) => Error(message, loc)
   }

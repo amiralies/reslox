@@ -1,17 +1,18 @@
 let hadError = ref(false)
 
 let run = source =>
-  source
-  ->Lexer.scanTokens
-  ->Result.getExn
-  ->List.toArray
-  ->Parser.make
-  ->Parser.parse
-  ->Result.getExn
-  ->Interpreter.interpret
-  ->Result.getExn
-  ->Expr.printValue
-  ->Js.log
+  switch Lexer.scanTokens(source) {
+  | Ok(tokens) =>
+    switch tokens->List.toArray->Parser.make->Parser.parse {
+    | Ok(ast) =>
+      switch Interpreter.interpret(ast) {
+      | Ok(v) => Js.log(Expr.printValue(v))
+      | Error((msg, loc)) => Js.log2(msg, loc)
+      }
+    | Error((msg, loc)) => Js.log2(msg, loc)
+    }
+  | Error(_) => Js.log("LexError")
+  }
 
 let runFile = path => {
   let source = Node.Fs.readFileAsUtf8Sync(path)

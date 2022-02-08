@@ -13,7 +13,7 @@ and parenthesize = (name: string, exprs: list<Expr.t>) => {
   `(${name} ${exprsJoined})`
 }
 and printBinaryOp = op =>
-  switch op {
+  switch op.val {
   | Equal => "=="
   | NotEqual => "!="
   | LessThan => "<"
@@ -28,14 +28,14 @@ and printBinaryOp = op =>
   }
 
 and printLiteral = literal =>
-  switch literal {
+  switch literal.val {
   | String(str) => `"${str}"`
   | Number(number) => Float.toString(number)
   | Bool(b) => b ? "true" : "false"
   | Nil => "nil"
   }
 and printUnaryOp = op =>
-  switch op {
+  switch op.val {
   | Negative => "-"
   | Not => "!"
   }

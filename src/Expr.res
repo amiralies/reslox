@@ -2,10 +2,10 @@ open Location
 
 type rec t = located<expr>
 and expr =
-  | Binary(t, binaryOperator, t)
+  | Binary(t, located<binaryOperator>, t)
   | Grouping(t)
-  | Literal(value)
-  | Unary(unaryOperator, t)
+  | Literal(located<value>)
+  | Unary(located<unaryOperator>, t)
   | Conditional(t, t, t)
 and value =
   | String(string)
@@ -45,7 +45,7 @@ module Helpr = {
     make(~loc, Binary(left, op, right))
   }
   let makeGrouping = (~loc, inner) => make(~loc, Grouping(inner))
-  let makeLiteral = (~loc, value) => make(~loc, Literal(value))
+  let makeLiteral = (~loc, value) => make(~loc, Literal({val: value, loc: loc}))
   let makeUnary = (~loc, op, right) => make(~loc, Unary(op, right))
   let makeConditional = (~loc, condition, then, else_) =>
     make(~loc, Conditional(condition, then, else_))

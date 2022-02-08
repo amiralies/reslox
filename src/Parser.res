@@ -40,9 +40,10 @@ and commaSequence = parser => {
   let rec loop = left =>
     switch peek(parser).val {
     | Comma =>
+      let opLoc = peek(parser).loc
       advance(parser)
       let right = conditional(parser)
-      loop(Helper.makeBinary(left, CommaSequence, right))
+      loop(Helper.makeBinary(left, {loc: opLoc, val: CommaSequence}, right))
 
     | _ => left
     }
@@ -77,14 +78,16 @@ and equality = parser => {
   let rec loop = left =>
     switch peek(parser).val {
     | BangEqual =>
+      let opLoc = peek(parser).loc
       advance(parser)
       let right = comparison(parser)
-      loop(Helper.makeBinary(left, NotEqual, right))
+      loop(Helper.makeBinary(left, {val: NotEqual, loc: opLoc}, right))
 
     | EqualEqual =>
+      let opLoc = peek(parser).loc
       advance(parser)
       let right = comparison(parser)
-      loop(Helper.makeBinary(left, Equal, right))
+      loop(Helper.makeBinary(left, {val: Equal, loc: opLoc}, right))
 
     | _ => left
     }
@@ -97,24 +100,28 @@ and comparison = parser => {
   let rec loop = left =>
     switch peek(parser).val {
     | Greater =>
+      let opLoc = peek(parser).loc
       advance(parser)
       let right = term(parser)
-      loop(Helper.makeBinary(left, GreaterThan, right))
+      loop(Helper.makeBinary(left, {val: GreaterThan, loc: opLoc}, right))
 
     | GreaterEqual =>
+      let opLoc = peek(parser).loc
       advance(parser)
       let right = term(parser)
-      loop(Helper.makeBinary(left, GreaterThanEqual, right))
+      loop(Helper.makeBinary(left, {val: GreaterThanEqual, loc: opLoc}, right))
 
     | Less =>
+      let opLoc = peek(parser).loc
       advance(parser)
       let right = term(parser)
-      loop(Helper.makeBinary(left, LessThan, right))
+      loop(Helper.makeBinary(left, {val: LessThan, loc: opLoc}, right))
 
     | LessEqual =>
+      let opLoc = peek(parser).loc
       advance(parser)
       let right = term(parser)
-      loop(Helper.makeBinary(left, LessThanEqual, right))
+      loop(Helper.makeBinary(left, {val: LessThanEqual, loc: opLoc}, right))
 
     | _ => left
     }
@@ -127,14 +134,16 @@ and term = parser => {
   let rec loop = left =>
     switch peek(parser).val {
     | Plus =>
+      let opLoc = peek(parser).loc
       advance(parser)
       let right = factor(parser)
-      loop(Helper.makeBinary(left, Add, right))
+      loop(Helper.makeBinary(left, {val: Add, loc: opLoc}, right))
 
     | Minus =>
+      let opLoc = peek(parser).loc
       advance(parser)
       let right = factor(parser)
-      loop(Helper.makeBinary(left, Sub, right))
+      loop(Helper.makeBinary(left, {val: Sub, loc: opLoc}, right))
 
     | _ => left
     }
@@ -147,14 +156,16 @@ and factor = parser => {
   let rec loop = left =>
     switch peek(parser).val {
     | Star =>
+      let opLoc = peek(parser).loc
       advance(parser)
       let right = unary(parser)
-      loop(Helper.makeBinary(left, Mul, right))
+      loop(Helper.makeBinary(left, {val: Mul, loc: opLoc}, right))
 
     | Slash =>
+      let opLoc = peek(parser).loc
       advance(parser)
       let right = unary(parser)
-      loop(Helper.makeBinary(left, Div, right))
+      loop(Helper.makeBinary(left, {val: Div, loc: opLoc}, right))
 
     | _ => left
     }
@@ -164,18 +175,20 @@ and factor = parser => {
 and unary = parser =>
   switch peek(parser).val {
   | Bang =>
-    let startLoc = peek(parser).loc.start
+    let opLoc = peek(parser).loc
+    let startLoc = opLoc.start
     advance(parser)
     let right = unary(parser)
     let loc = {start: startLoc, end: right.loc.end}
-    Helper.makeUnary(~loc, Not, right)
+    Helper.makeUnary(~loc, {val: Not, loc: opLoc}, right)
 
   | Minus =>
-    let startLoc = peek(parser).loc.start
+    let opLoc = peek(parser).loc
+    let startLoc = opLoc.start
     advance(parser)
     let right = unary(parser)
     let loc = {start: startLoc, end: right.loc.end}
-    Helper.makeUnary(~loc, Negative, right)
+    Helper.makeUnary(~loc, {val: Negative, loc: opLoc}, right)
 
   | _ => primary(parser)
   }
