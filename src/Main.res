@@ -1,5 +1,12 @@
 let hadError = ref(false)
 
+let printLoc = (loc: Location.t) => {
+  if loc.start == loc.end {
+    `${loc.start.line->Int.toString}:${loc.start.col->Int.toString}`
+  } else {
+    `${loc.start.line->Int.toString}:${loc.start.col->Int.toString} to ${loc.end.line->Int.toString}:${loc.end.col->Int.toString}`
+  }
+}
 let run = source =>
   switch Lexer.scanTokens(source) {
   | Ok(tokens) =>
@@ -7,9 +14,9 @@ let run = source =>
     | Ok(ast) =>
       switch Interpreter.interpret(ast) {
       | Ok(v) => Js.log(Expr.printValue(v))
-      | Error((msg, loc)) => Js.log2(msg, loc)
+      | Error((msg, loc)) => Js.log2(msg, printLoc(loc))
       }
-    | Error((msg, loc)) => Js.log2(msg, loc)
+    | Error((msg, loc)) => Js.log2(msg, printLoc(loc))
     }
   | Error(_) => Js.log("LexError")
   }
