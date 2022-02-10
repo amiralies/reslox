@@ -13,7 +13,7 @@ let run = source =>
     switch tokens->List.toArray->Parser.make->Parser.parse {
     | Ok(ast) =>
       switch Interpreter.interpret(ast) {
-      | Ok(v) => Js.log(Expr.printValue(v))
+      | Ok() => ()
       | Error((msg, loc)) => Js.log2(msg, printLoc(loc))
       }
     | Error((msg, loc)) => Js.log2(msg, printLoc(loc))
@@ -56,3 +56,4 @@ let main = () => {
 }
 
 main()
+

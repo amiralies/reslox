@@ -1,6 +1,7 @@
 exception EvalError(string, Location.t)
 
 open Expr
+
 let isTruthy = value =>
   switch value {
   | Expr.Nil => false
@@ -20,20 +21,20 @@ let applyComparisonOrRaise = (opLoc, left, right, p) =>
   | _ => raise(EvalError("Operands should be numbers", opLoc))
   }
 
-let rec eval: Expr.t => Expr.value = expr =>
+let rec evaluate: Expr.t => Expr.value = expr =>
   switch expr.val {
   | Binary(left, op, right) =>
-    let leftValue = eval(left)
-    let rightValue = eval(right)
+    let leftValue = evaluate(left)
+    let rightValue = evaluate(right)
     evalBinary(leftValue, op, rightValue)
-  | Grouping(expr) => eval(expr)
+  | Grouping(expr) => evaluate(expr)
   | Literal(value) => value.val
   | Unary(op, right) =>
-    let rightValue = eval(right)
+    let rightValue = evaluate(right)
 
     evalUnary(op, rightValue)
   | Conditional(cond, then, else_) =>
-    let condValue = eval(cond)
+    let condValue = evaluate(cond)
 
     evalConditional(condValue, then, else_)
   }
@@ -70,16 +71,26 @@ and evalUnary = ({val: op, loc: opLoc}, right) =>
   | Not => Bool(!isTruthy(right))
   }
 
-and evalConditional = (cond, then, else_) => {
+and evalConditional = (cond, then, else_) =>
   if isTruthy(cond) {
-    eval(then)
+    evaluate(then)
   } else {
-    eval(else_)
+    evaluate(else_)
   }
-}
 
-let interpret = expr =>
-  switch eval(expr) {
-  | value => Ok(value)
-  | exception EvalError(message, loc) => Error(message, loc)
+let execute = (stmt: Stmt.t) =>
+  switch stmt.val {
+  | Expression(expr) =>
+    let _: Expr.value = evaluate(expr)
+
+  | Print(expr) =>
+    let value = evaluate(expr)
+    Js.log(printValue(value))
   }
+
+let interpret = (program: list<Stmt.t>) =>
+  switch List.forEach(program, execute) {
+  | () => Ok()
+  | exception EvalError(msg, loc) => Error(msg, loc)
+  }
+

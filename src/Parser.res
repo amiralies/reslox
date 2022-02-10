@@ -267,8 +267,48 @@ let _synchronize = parser => {
   loop(parser)
 }
 
-let parse = parser =>
-  switch expression(parser) {
+let rec statement = parser =>
+  switch peek(parser).val {
+  | Print => printStatement(parser)
+  | _ => expressionStatement(parser)
+  }
+and printStatement = parser => {
+  let printLoc = peek(parser).loc
+  advance(parser) // Consume print token
+  let value = expression(parser)
+  let {loc: semiLoc} = consumeIfOrRaise(
+    parser,
+    peek => peek == SemiColon,
+    "Expected ';' after value.",
+  )
+  let loc = {start: printLoc.start, end: semiLoc.end}
+
+  {val: Stmt.Print(value), loc: loc}
+}
+and expressionStatement = parser => {
+  let value = expression(parser)
+  let {loc: semiLoc} = consumeIfOrRaise(
+    parser,
+    peek => peek == SemiColon,
+    "Expected ';' after expression.",
+  )
+  let loc = {start: value.loc.start, end: semiLoc.end}
+
+  {val: Stmt.Expression(value), loc: loc}
+}
+
+let parse = parser => {
+  let rec loop = acc =>
+    if isAtEnd(parser) {
+      List.reverse(acc)
+    } else {
+      let stmtItem = statement(parser)
+      loop(list{stmtItem, ...acc})
+    }
+
+  switch loop(list{}) {
   | ast => Ok(ast)
   | exception ParseError(message, loc) => Error(message, loc)
   }
+}
+
