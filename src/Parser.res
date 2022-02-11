@@ -42,7 +42,7 @@ and commaSequence = parser => {
       let opLoc = peek(parser).loc
       advance(parser)
       let right = conditional(parser)
-      let op = Ast.Helper.Expr.bop(~loc=opLoc, BopCommaSequence)
+      let op = Ast.Helper.Expr.bop(~loc=opLoc, BopCommaSeq)
       loop(Ast.Helper.Expr.binary(left, op, right))
 
     | _ => left
@@ -105,28 +105,28 @@ and comparison = parser => {
       let opLoc = peek(parser).loc
       advance(parser)
       let right = term(parser)
-      let op = Ast.Helper.Expr.bop(~loc=opLoc, BopGreaterThan)
+      let op = Ast.Helper.Expr.bop(~loc=opLoc, BopGreater)
       loop(Ast.Helper.Expr.binary(left, op, right))
 
     | GreaterEqual =>
       let opLoc = peek(parser).loc
       advance(parser)
       let right = term(parser)
-      let op = Ast.Helper.Expr.bop(~loc=opLoc, BopGreaterThanEqual)
+      let op = Ast.Helper.Expr.bop(~loc=opLoc, BopGreaterEqual)
       loop(Ast.Helper.Expr.binary(left, op, right))
 
     | Less =>
       let opLoc = peek(parser).loc
       advance(parser)
       let right = term(parser)
-      let op = Ast.Helper.Expr.bop(~loc=opLoc, BopLessThan)
+      let op = Ast.Helper.Expr.bop(~loc=opLoc, BopLess)
       loop(Ast.Helper.Expr.binary(left, op, right))
 
     | LessEqual =>
       let opLoc = peek(parser).loc
       advance(parser)
       let right = term(parser)
-      let op = Ast.Helper.Expr.bop(~loc=opLoc, BopLessThanEqual)
+      let op = Ast.Helper.Expr.bop(~loc=opLoc, BopLessEqual)
       loop(Ast.Helper.Expr.binary(left, op, right))
 
     | _ => left

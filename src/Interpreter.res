@@ -50,13 +50,13 @@ and evalBinary = (left, {bopDesc, bopLoc}, right) =>
     | (VString(left), VString(right)) => VString(left ++ right)
     | _ => raise(EvalError("Both operands should be numbers or strings", bopLoc))
     }
-  | BopGreaterThan => applyComparisonOrRaise(bopLoc, left, right, (l, r) => l > r)
-  | BopGreaterThanEqual => applyComparisonOrRaise(bopLoc, left, right, (l, r) => l >= r)
-  | BopLessThan => applyComparisonOrRaise(bopLoc, left, right, (l, r) => l < r)
-  | BopLessThanEqual => applyComparisonOrRaise(bopLoc, left, right, (l, r) => l <= r)
+  | BopGreater => applyComparisonOrRaise(bopLoc, left, right, (l, r) => l > r)
+  | BopGreaterEqual => applyComparisonOrRaise(bopLoc, left, right, (l, r) => l >= r)
+  | BopLess => applyComparisonOrRaise(bopLoc, left, right, (l, r) => l < r)
+  | BopLessEqual => applyComparisonOrRaise(bopLoc, left, right, (l, r) => l <= r)
   | BopEqual => VBool(left == right)
   | BopNotEqual => VBool(left != right)
-  | BopCommaSequence => right
+  | BopCommaSeq => right
   }
 
 and evalUnary = ({uopDesc, uopLoc}, right) =>

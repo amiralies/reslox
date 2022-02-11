@@ -21,15 +21,15 @@ and bop = {
 and bopDesc =
   | BopEqual
   | BopNotEqual
-  | BopLessThan
-  | BopLessThanEqual
-  | BopGreaterThan
-  | BopGreaterThanEqual
+  | BopLess
+  | BopLessEqual
+  | BopGreater
+  | BopGreaterEqual
   | BopAdd
   | BopSub
   | BopMul
   | BopDiv
-  | BopCommaSequence
+  | BopCommaSeq
 and uop = {
   uopDesc: uopDesc,
   uopLoc: Location.t,

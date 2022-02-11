@@ -14,15 +14,15 @@ and printBinaryOp = bop =>
   switch bop.bopDesc {
   | BopEqual => "=="
   | BopNotEqual => "!="
-  | BopLessThan => "<"
-  | BopLessThanEqual => "<="
-  | BopGreaterThan => ">"
-  | BopGreaterThanEqual => ">="
+  | BopLess => "<"
+  | BopLessEqual => "<="
+  | BopGreater => ">"
+  | BopGreaterEqual => ">="
   | BopAdd => "+"
   | BopSub => "-"
   | BopMul => "*"
   | BopDiv => "/"
-  | BopCommaSequence => ","
+  | BopCommaSeq => ","
   }
 
 and printLiteralValue = value =>
