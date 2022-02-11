@@ -67,6 +67,16 @@ module Helper = {
     let unary = (~loc, uop, right) => mk(~loc, ExprUnary(uop, right))
     let conditional = (~loc, condition, then, else_) =>
       mk(~loc, ExprConditional(condition, then, else_))
+
+    let bop = (~loc, desc) => {
+      bopDesc: desc,
+      bopLoc: loc,
+    }
+
+    let uop = (~loc, desc) => {
+      uopDesc: desc,
+      uopLoc: loc,
+    }
   }
 
   module Stmt = {
@@ -79,4 +89,12 @@ module Helper = {
     let expression = (~loc, expr) => mk(~loc, StmtExpression(expr))
   }
 }
+
+let printValue = value =>
+  switch value {
+  | VString(s) => s
+  | VNumber(f) => Float.toString(f)
+  | VBool(b) => b ? "true" : "false"
+  | VNil => "nil"
+  }
 

@@ -4,8 +4,7 @@ type t = {
 }
 open Token
 open Location
-
-module Helper = Expr.Helpr
+open Ast
 
 let make = tokens => {
   tokens: tokens,
@@ -43,7 +42,8 @@ and commaSequence = parser => {
       let opLoc = peek(parser).loc
       advance(parser)
       let right = conditional(parser)
-      loop(Helper.makeBinary(left, {loc: opLoc, val: CommaSequence}, right))
+      let op = Ast.Helper.Expr.bop(~loc=opLoc, BopCommaSequence)
+      loop(Ast.Helper.Expr.binary(left, op, right))
 
     | _ => left
     }
@@ -64,8 +64,8 @@ and conditional = parser => {
         "Expected ':' after expression",
       )
       let right = conditional(parser)
-      let loc = {start: left.loc.start, end: right.loc.end}
-      loop(Helper.makeConditional(~loc, left, middle, right))
+      let loc = {start: left.Ast.exprLoc.start, end: right.exprLoc.end}
+      loop(Ast.Helper.Expr.conditional(~loc, left, middle, right))
 
     | _ => left
     }
@@ -81,13 +81,15 @@ and equality = parser => {
       let opLoc = peek(parser).loc
       advance(parser)
       let right = comparison(parser)
-      loop(Helper.makeBinary(left, {val: NotEqual, loc: opLoc}, right))
+      let op = Ast.Helper.Expr.bop(~loc=opLoc, BopNotEqual)
+      loop(Ast.Helper.Expr.binary(left, op, right))
 
     | EqualEqual =>
       let opLoc = peek(parser).loc
       advance(parser)
       let right = comparison(parser)
-      loop(Helper.makeBinary(left, {val: Equal, loc: opLoc}, right))
+      let op = Ast.Helper.Expr.bop(~loc=opLoc, BopEqual)
+      loop(Ast.Helper.Expr.binary(left, op, right))
 
     | _ => left
     }
@@ -103,25 +105,29 @@ and comparison = parser => {
       let opLoc = peek(parser).loc
       advance(parser)
       let right = term(parser)
-      loop(Helper.makeBinary(left, {val: GreaterThan, loc: opLoc}, right))
+      let op = Ast.Helper.Expr.bop(~loc=opLoc, BopGreaterThan)
+      loop(Ast.Helper.Expr.binary(left, op, right))
 
     | GreaterEqual =>
       let opLoc = peek(parser).loc
       advance(parser)
       let right = term(parser)
-      loop(Helper.makeBinary(left, {val: GreaterThanEqual, loc: opLoc}, right))
+      let op = Ast.Helper.Expr.bop(~loc=opLoc, BopGreaterThanEqual)
+      loop(Ast.Helper.Expr.binary(left, op, right))
 
     | Less =>
       let opLoc = peek(parser).loc
       advance(parser)
       let right = term(parser)
-      loop(Helper.makeBinary(left, {val: LessThan, loc: opLoc}, right))
+      let op = Ast.Helper.Expr.bop(~loc=opLoc, BopLessThan)
+      loop(Ast.Helper.Expr.binary(left, op, right))
 
     | LessEqual =>
       let opLoc = peek(parser).loc
       advance(parser)
       let right = term(parser)
-      loop(Helper.makeBinary(left, {val: LessThanEqual, loc: opLoc}, right))
+      let op = Ast.Helper.Expr.bop(~loc=opLoc, BopLessThanEqual)
+      loop(Ast.Helper.Expr.binary(left, op, right))
 
     | _ => left
     }
@@ -137,13 +143,15 @@ and term = parser => {
       let opLoc = peek(parser).loc
       advance(parser)
       let right = factor(parser)
-      loop(Helper.makeBinary(left, {val: Add, loc: opLoc}, right))
+      let op = Ast.Helper.Expr.bop(~loc=opLoc, BopAdd)
+      loop(Ast.Helper.Expr.binary(left, op, right))
 
     | Minus =>
       let opLoc = peek(parser).loc
       advance(parser)
       let right = factor(parser)
-      loop(Helper.makeBinary(left, {val: Sub, loc: opLoc}, right))
+      let op = Ast.Helper.Expr.bop(~loc=opLoc, BopSub)
+      loop(Ast.Helper.Expr.binary(left, op, right))
 
     | _ => left
     }
@@ -159,13 +167,15 @@ and factor = parser => {
       let opLoc = peek(parser).loc
       advance(parser)
       let right = unary(parser)
-      loop(Helper.makeBinary(left, {val: Mul, loc: opLoc}, right))
+      let op = Ast.Helper.Expr.bop(~loc=opLoc, BopMul)
+      loop(Ast.Helper.Expr.binary(left, op, right))
 
     | Slash =>
       let opLoc = peek(parser).loc
       advance(parser)
       let right = unary(parser)
-      loop(Helper.makeBinary(left, {val: Div, loc: opLoc}, right))
+      let op = Ast.Helper.Expr.bop(~loc=opLoc, BopDiv)
+      loop(Ast.Helper.Expr.binary(left, op, right))
 
     | _ => left
     }
@@ -179,16 +189,18 @@ and unary = parser =>
     let startLoc = opLoc.start
     advance(parser)
     let right = unary(parser)
-    let loc = {start: startLoc, end: right.loc.end}
-    Helper.makeUnary(~loc, {val: Not, loc: opLoc}, right)
+    let loc = {start: startLoc, end: right.exprLoc.end}
+    let op = Ast.Helper.Expr.uop(~loc=opLoc, UopNot)
+    Ast.Helper.Expr.unary(~loc, op, right)
 
   | Minus =>
     let opLoc = peek(parser).loc
     let startLoc = opLoc.start
     advance(parser)
     let right = unary(parser)
-    let loc = {start: startLoc, end: right.loc.end}
-    Helper.makeUnary(~loc, {val: Negative, loc: opLoc}, right)
+    let loc = {start: startLoc, end: right.exprLoc.end}
+    let op = Ast.Helper.Expr.uop(~loc=opLoc, UopNegative)
+    Ast.Helper.Expr.unary(~loc, op, right)
 
   | _ => primary(parser)
   }
@@ -198,27 +210,27 @@ and primary = parser =>
   | True =>
     let {loc} = peek(parser)
     advance(parser)
-    Helper.makeLiteral(~loc, Bool(true))
+    Ast.Helper.Expr.literal(~loc, VBool(true))
 
   | False =>
     let {loc} = peek(parser)
     advance(parser)
-    Helper.makeLiteral(~loc, Bool(false))
+    Ast.Helper.Expr.literal(~loc, VBool(false))
 
   | Number(value) =>
     let {loc} = peek(parser)
     advance(parser)
-    Helper.makeLiteral(~loc, Number(value))
+    Ast.Helper.Expr.literal(~loc, VNumber(value))
 
   | String(value) =>
     let {loc} = peek(parser)
     advance(parser)
-    Helper.makeLiteral(~loc, String(value))
+    Ast.Helper.Expr.literal(~loc, VString(value))
 
   | Nil =>
     let {loc} = peek(parser)
     advance(parser)
-    Helper.makeLiteral(~loc, Nil)
+    Ast.Helper.Expr.literal(~loc, VNil)
 
   | LeftParen =>
     let {loc: {start: startLoc}} = peek(parser)
@@ -232,7 +244,7 @@ and primary = parser =>
     let endLoc = consumedRParen.loc.end
     let loc = {start: startLoc, end: endLoc}
 
-    Helper.makeGrouping(~loc, expr)
+    Ast.Helper.Expr.grouping(~loc, expr)
 
   | _ => raise(ParseError("Expected expression", peek(parser).loc))
   }
@@ -275,7 +287,7 @@ let rec statement = parser =>
 and printStatement = parser => {
   let printLoc = peek(parser).loc
   advance(parser) // Consume print token
-  let value = expression(parser)
+  let expr = expression(parser)
   let {loc: semiLoc} = consumeIfOrRaise(
     parser,
     peek => peek == SemiColon,
@@ -283,18 +295,18 @@ and printStatement = parser => {
   )
   let loc = {start: printLoc.start, end: semiLoc.end}
 
-  {val: Stmt.Print(value), loc: loc}
+  Ast.Helper.Stmt.print(~loc, expr)
 }
 and expressionStatement = parser => {
-  let value = expression(parser)
+  let expr = expression(parser)
   let {loc: semiLoc} = consumeIfOrRaise(
     parser,
     peek => peek == SemiColon,
     "Expected ';' after expression.",
   )
-  let loc = {start: value.loc.start, end: semiLoc.end}
+  let loc = {start: expr.exprLoc.start, end: semiLoc.end}
 
-  {val: Stmt.Expression(value), loc: loc}
+  Ast.Helper.Stmt.expression(~loc, expr)
 }
 
 let parse = parser => {
@@ -307,7 +319,7 @@ let parse = parser => {
     }
 
   switch loop(list{}) {
-  | ast => Ok(ast)
+  | stmts => Ok(stmts)
   | exception ParseError(message, loc) => Error(message, loc)
   }
 }

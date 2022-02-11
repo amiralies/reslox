@@ -1,2 +1,2 @@
-let interpret: list<Stmt.t> => Result.t<unit, (string, Location.t)>
+let interpret: list<Ast.stmt> => Result.t<unit, (string, Location.t)>
 

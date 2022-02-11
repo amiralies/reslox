@@ -1,74 +1,74 @@
 exception EvalError(string, Location.t)
 
-open Expr
+open Ast
 
 let isTruthy = value =>
   switch value {
-  | Expr.Nil => false
-  | Bool(b) => b
-  | Number(_) | String(_) => true
+  | VNil => false
+  | VBool(b) => b
+  | VNumber(_) | VString(_) => true
   }
 
 let applyArthimaticOrRaise = (opLoc, left, right, f) =>
   switch (left, right) {
-  | (Number(left), Number(right)) => Number(f(left, right))
+  | (VNumber(left), VNumber(right)) => VNumber(f(left, right))
   | _ => raise(EvalError("Operands should be numbers", opLoc))
   }
 
 let applyComparisonOrRaise = (opLoc, left, right, p) =>
   switch (left, right) {
-  | (Number(left), Number(right)) => Bool(p(left, right))
+  | (VNumber(left), VNumber(right)) => VBool(p(left, right))
   | _ => raise(EvalError("Operands should be numbers", opLoc))
   }
 
-let rec evaluate: Expr.t => Expr.value = expr =>
-  switch expr.val {
-  | Binary(left, op, right) =>
+let rec evaluate: Ast.expr => Ast.value = expr =>
+  switch expr.exprDesc {
+  | ExprBinary(left, op, right) =>
     let leftValue = evaluate(left)
     let rightValue = evaluate(right)
     evalBinary(leftValue, op, rightValue)
-  | Grouping(expr) => evaluate(expr)
-  | Literal(value) => value.val
-  | Unary(op, right) =>
+  | ExprGrouping(expr) => evaluate(expr)
+  | ExprLiteral(value) => value
+  | ExprUnary(op, right) =>
     let rightValue = evaluate(right)
 
     evalUnary(op, rightValue)
-  | Conditional(cond, then, else_) =>
+  | ExprConditional(cond, then, else_) =>
     let condValue = evaluate(cond)
 
     evalConditional(condValue, then, else_)
   }
 
-and evalBinary = (left, {val: op, loc: opLoc}, right) =>
-  switch op {
-  | Sub => applyArthimaticOrRaise(opLoc, left, right, (l, r) => l -. r)
-  | Div => applyArthimaticOrRaise(opLoc, left, right, (l, r) => l /. r) // TODO Division by zero
-  | Mul => applyArthimaticOrRaise(opLoc, left, right, (l, r) => l *. r)
-  | Add =>
+and evalBinary = (left, {bopDesc, bopLoc}, right) =>
+  switch bopDesc {
+  | BopSub => applyArthimaticOrRaise(bopLoc, left, right, (l, r) => l -. r)
+  | BopDiv => applyArthimaticOrRaise(bopLoc, left, right, (l, r) => l /. r) // TODO Division by zero
+  | BopMul => applyArthimaticOrRaise(bopLoc, left, right, (l, r) => l *. r)
+  | BopAdd =>
     switch (left, right) {
-    | (Number(left), Number(right)) => Number(left +. right)
-    | (String(left), String(right)) => String(left ++ right)
-    | _ => raise(EvalError("Both operands should be numbers or strings", opLoc))
+    | (VNumber(left), VNumber(right)) => VNumber(left +. right)
+    | (VString(left), VString(right)) => VString(left ++ right)
+    | _ => raise(EvalError("Both operands should be numbers or strings", bopLoc))
     }
-  | GreaterThan => applyComparisonOrRaise(opLoc, left, right, (l, r) => l > r)
-  | GreaterThanEqual => applyComparisonOrRaise(opLoc, left, right, (l, r) => l >= r)
-  | LessThan => applyComparisonOrRaise(opLoc, left, right, (l, r) => l < r)
-  | LessThanEqual => applyComparisonOrRaise(opLoc, left, right, (l, r) => l <= r)
-  | Equal => Bool(left == right)
-  | NotEqual => Bool(left != right)
-  | CommaSequence => right
+  | BopGreaterThan => applyComparisonOrRaise(bopLoc, left, right, (l, r) => l > r)
+  | BopGreaterThanEqual => applyComparisonOrRaise(bopLoc, left, right, (l, r) => l >= r)
+  | BopLessThan => applyComparisonOrRaise(bopLoc, left, right, (l, r) => l < r)
+  | BopLessThanEqual => applyComparisonOrRaise(bopLoc, left, right, (l, r) => l <= r)
+  | BopEqual => VBool(left == right)
+  | BopNotEqual => VBool(left != right)
+  | BopCommaSequence => right
   }
 
-and evalUnary = ({val: op, loc: opLoc}, right) =>
-  switch op {
-  | Negative =>
+and evalUnary = ({uopDesc, uopLoc}, right) =>
+  switch uopDesc {
+  | UopNegative =>
     switch right {
-    | Number(number) => Number(-.number)
-    | String(_) | Bool(_) | Nil =>
-      raise(EvalError("Can't use unary '-' operator on non-number values", opLoc))
+    | VNumber(number) => VNumber(-.number)
+    | VString(_) | VBool(_) | VNil =>
+      raise(EvalError("Can't use unary '-' operator on non-number values", uopLoc))
     }
 
-  | Not => Bool(!isTruthy(right))
+  | UopNot => VBool(!isTruthy(right))
   }
 
 and evalConditional = (cond, then, else_) =>
@@ -78,17 +78,17 @@ and evalConditional = (cond, then, else_) =>
     evaluate(else_)
   }
 
-let execute = (stmt: Stmt.t) =>
-  switch stmt.val {
-  | Expression(expr) =>
-    let _: Expr.value = evaluate(expr)
+let execute = (stmt: Ast.stmt) =>
+  switch stmt.stmtDesc {
+  | StmtExpression(expr) =>
+    let _: Ast.value = evaluate(expr)
 
-  | Print(expr) =>
+  | StmtPrint(expr) =>
     let value = evaluate(expr)
-    Js.log(printValue(value))
+    Js.log(Ast.printValue(value))
   }
 
-let interpret = (program: list<Stmt.t>) =>
+let interpret = (program: list<Ast.stmt>) =>
   switch List.forEach(program, execute) {
   | () => Ok()
   | exception EvalError(msg, loc) => Error(msg, loc)

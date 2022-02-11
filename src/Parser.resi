@@ -2,4 +2,5 @@ type t
 
 let make: array<Location.located<Token.t>> => t
 
-let parse: t => result<list<Stmt.t>, (string, Location.t)>
+let parse: t => result<list<Ast.stmt>, (string, Location.t)>
+
