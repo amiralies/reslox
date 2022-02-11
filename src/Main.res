@@ -14,9 +14,9 @@ let run = source =>
     | Ok(ast) =>
       switch Interpreter.interpret(ast) {
       | Ok() => ()
-      | Error((msg, loc)) => Js.log2(msg, printLoc(loc))
+      | Error(msg, loc) => Js.log2(msg, printLoc(loc))
       }
-    | Error((msg, loc)) => Js.log2(msg, printLoc(loc))
+    | Error(errors) => errors->List.forEach(((msg, loc)) => Js.log2(msg, printLoc(loc)))
     }
   | Error(_) => Js.log("LexError")
   }

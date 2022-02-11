@@ -86,6 +86,7 @@ let execute = (stmt: Ast.stmt) =>
   | StmtPrint(expr) =>
     let value = evaluate(expr)
     Js.log(Ast.printValue(value))
+  | _ => ()
   }
 
 let interpret = (program: list<Ast.stmt>) =>

@@ -14,6 +14,7 @@ and exprDesc =
   | ExprLiteral(value) // TODO located?
   | ExprUnary(uop, expr)
   | ExprConditional(expr, expr, expr)
+  | ExprVariable(string)
 and bop = {
   bopDesc: bopDesc,
   bopLoc: Location.t,
@@ -45,6 +46,7 @@ type rec stmt = {
 and stmtDesc =
   | StmtPrint(expr)
   | StmtExpression(expr)
+  | StmtVar(string, expr)
 
 module Helper = {
   open Location
@@ -67,6 +69,7 @@ module Helper = {
     let unary = (~loc, uop, right) => mk(~loc, ExprUnary(uop, right))
     let conditional = (~loc, condition, then, else_) =>
       mk(~loc, ExprConditional(condition, then, else_))
+    let variable = (~loc, name) => mk(~loc, ExprVariable(name))
 
     let bop = (~loc, desc) => {
       bopDesc: desc,
@@ -87,6 +90,7 @@ module Helper = {
 
     let print = (~loc, expr) => mk(~loc, StmtPrint(expr))
     let expression = (~loc, expr) => mk(~loc, StmtExpression(expr))
+    let var = (~loc, name, expr) => mk(~loc, StmtVar(name, expr))
   }
 }
 

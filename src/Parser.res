@@ -32,6 +32,15 @@ let consumeIfOrRaise = (parser, p, message) =>
     raise(ParseError(message, peek(parser).loc))
   }
 
+let consumeMapOrRaise = (parser, f, message) =>
+  switch f(peek(parser).val) {
+  | Some(v) =>
+    let {loc} = peek(parser)
+    advance(parser)
+    {val: v, loc: loc}
+  | None => raise(ParseError(message, peek(parser).loc))
+  }
+
 let rec expression = parser => commaSequence(parser)
 and commaSequence = parser => {
   let expr = conditional(parser)
@@ -232,6 +241,11 @@ and primary = parser =>
     advance(parser)
     Ast.Helper.Expr.literal(~loc, VNil)
 
+  | Identifier(name) =>
+    let {loc} = peek(parser)
+    advance(parser)
+    Ast.Helper.Expr.variable(~loc, name)
+
   | LeftParen =>
     let {loc: {start: startLoc}} = peek(parser)
     advance(parser)
@@ -249,7 +263,7 @@ and primary = parser =>
   | _ => raise(ParseError("Expected expression", peek(parser).loc))
   }
 
-let _synchronize = parser => {
+let synchronize = parser => {
   advance(parser)
 
   let rec loop = parser =>
@@ -309,18 +323,77 @@ and expressionStatement = parser => {
   Ast.Helper.Stmt.expression(~loc, expr)
 }
 
+let rec declaration = parser => {
+  try Ok(
+    switch peek(parser).val {
+    | Var => varDeclaration(parser)
+    | _ => statement(parser)
+    },
+  ) catch {
+  | ParseError(msg, loc) =>
+    synchronize(parser)
+    Error(msg, loc)
+  }
+}
+and varDeclaration = parser => {
+  let varLoc = peek(parser).loc
+  advance(parser) // Consume var token
+  let {val: name, loc: nameLoc} = consumeMapOrRaise(
+    parser,
+    token =>
+      switch token {
+      | Identifier(name) => Some(name)
+      | _ => None
+      },
+    "Expect variable name.",
+  )
+
+  let initilizer = switch peek(parser).val {
+  | Equal =>
+    advance(parser)
+    expression(parser)
+  | _ => Ast.Helper.Expr.literal(~loc={start: nameLoc.start, end: nameLoc.end}, VNil)
+  }
+
+  let {loc: semiLoc} = consumeIfOrRaise(
+    parser,
+    peek => peek == SemiColon,
+    "Expect ';' after variable declaration.",
+  )
+
+  let loc = {start: varLoc.start, end: semiLoc.end}
+
+  Ast.Helper.Stmt.var(~loc, name, initilizer)
+}
+
 let parse = parser => {
   let rec loop = acc =>
     if isAtEnd(parser) {
       List.reverse(acc)
     } else {
-      let stmtItem = statement(parser)
-      loop(list{stmtItem, ...acc})
+      let stmtItemOrErr = declaration(parser)
+      loop(list{stmtItemOrErr, ...acc})
     }
 
-  switch loop(list{}) {
-  | stmts => Ok(stmts)
-  | exception ParseError(message, loc) => Error(message, loc)
+  let stmtItemsAndErrors = loop(list{})
+  let stmtItems = stmtItemsAndErrors->List.keepMap(itemOrErr =>
+    switch itemOrErr {
+    | Ok(item) => Some(item)
+    | Error(_) => None
+    }
+  )
+
+  let errorItems = stmtItemsAndErrors->List.keepMap(itemOrErr =>
+    switch itemOrErr {
+    | Error(err) => Some(err)
+    | Ok(_) => None
+    }
+  )
+
+  if errorItems == list{} {
+    Ok(stmtItems)
+  } else {
+    Error(errorItems)
   }
 }
 

@@ -5,6 +5,7 @@ let rec print = expr =>
   | ExprLiteral(literal) => printLiteralValue(literal)
   | ExprUnary(op, expr) => parenthesize(printUnaryOp(op), list{expr})
   | ExprConditional(condition, then, else_) => parenthesize("?:", list{condition, then, else_})
+  | ExprVariable(name) => name
   }
 and parenthesize = (name: string, exprs: list<Ast.expr>) => {
   let exprsJoined = exprs->List.map(print)->String.concat(" ", _)
