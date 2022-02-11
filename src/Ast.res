@@ -55,17 +55,17 @@ module Helper = {
       exprLoc: loc,
     }
 
-    let mkBinary = (left, bop, right) => {
+    let binary = (left, bop, right) => {
       let loc = {
         start: left.exprLoc.start,
         end: right.exprLoc.end,
       }
       mk(~loc, ExprBinary(left, bop, right))
     }
-    let mkGrouping = (~loc, inner) => mk(~loc, ExprGrouping(inner))
-    let mkLiteral = (~loc, value) => mk(~loc, ExprLiteral(value))
-    let mkUnary = (~loc, uop, right) => mk(~loc, ExprUnary(uop, right))
-    let mkConditional = (~loc, condition, then, else_) =>
+    let grouping = (~loc, inner) => mk(~loc, ExprGrouping(inner))
+    let literal = (~loc, value) => mk(~loc, ExprLiteral(value))
+    let unary = (~loc, uop, right) => mk(~loc, ExprUnary(uop, right))
+    let conditional = (~loc, condition, then, else_) =>
       mk(~loc, ExprConditional(condition, then, else_))
   }
 
@@ -75,8 +75,8 @@ module Helper = {
       stmtLoc: loc,
     }
 
-    let mkPrint = (~loc, expr) => mk(~loc, StmtPrint(expr))
-    let mkExpression = (~loc, expr) => mk(~loc, StmtExpression(expr))
+    let print = (~loc, expr) => mk(~loc, StmtPrint(expr))
+    let expression = (~loc, expr) => mk(~loc, StmtExpression(expr))
   }
 }
 
