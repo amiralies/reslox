@@ -2,9 +2,15 @@ exception EvalError(string, Location.t)
 
 open Ast
 
+type value = Value.t =
+  | VString(string)
+  | VNumber(float)
+  | VBool(bool)
+  | VNil
+
 let isTruthy = value =>
   switch value {
-  | VNil => false
+  | Value.VNil => false
   | VBool(b) => b
   | VNumber(_) | VString(_) => true
   }
@@ -21,7 +27,7 @@ let applyComparisonOrRaise = (opLoc, left, right, p) =>
   | _ => raise(EvalError("Operands should be numbers", opLoc))
   }
 
-let rec evaluate: Ast.expr => Ast.value = expr =>
+let rec evaluate: Ast.expr => value = expr =>
   switch expr.exprDesc {
   | ExprBinary(left, op, right) =>
     let leftValue = evaluate(left)
@@ -81,11 +87,11 @@ and evalConditional = (cond, then, else_) =>
 let execute = (stmt: Ast.stmt) =>
   switch stmt.stmtDesc {
   | StmtExpression(expr) =>
-    let _: Ast.value = evaluate(expr)
+    let _: Value.t = evaluate(expr)
 
   | StmtPrint(expr) =>
     let value = evaluate(expr)
-    Js.log(Ast.printValue(value))
+    Js.log(Value.print(value))
   }
 
 let interpret = (program: list<Ast.stmt>) =>

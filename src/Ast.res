@@ -1,9 +1,3 @@
-type value =
-  | VString(string)
-  | VNumber(float)
-  | VBool(bool)
-  | VNil
-
 type rec expr = {
   exprDesc: exprDesc,
   exprLoc: Location.t,
@@ -11,7 +5,7 @@ type rec expr = {
 and exprDesc =
   | ExprBinary(expr, bop, expr)
   | ExprGrouping(expr)
-  | ExprLiteral(value) // TODO located?
+  | ExprLiteral(Value.t) // TODO located?
   | ExprUnary(uop, expr)
   | ExprConditional(expr, expr, expr)
   | ExprVariable(string)
@@ -93,12 +87,4 @@ module Helper = {
     let var = (~loc, name, expr) => mk(~loc, StmtVar(name, expr))
   }
 }
-
-let printValue = value =>
-  switch value {
-  | VString(s) => s
-  | VNumber(f) => Float.toString(f)
-  | VBool(b) => b ? "true" : "false"
-  | VNil => "nil"
-  }
 
