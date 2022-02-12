@@ -27,22 +27,27 @@ let applyComparisonOrRaise = (opLoc, left, right, p) =>
   | _ => raise(EvalError("Operands should be numbers", opLoc))
   }
 
-let rec evaluate: Ast.expr => value = expr =>
+let rec evaluate: (Env.t, Ast.expr) => value = (env, expr) =>
   switch expr.exprDesc {
   | ExprBinary(left, op, right) =>
-    let leftValue = evaluate(left)
-    let rightValue = evaluate(right)
+    let leftValue = evaluate(env, left)
+    let rightValue = evaluate(env, right)
     evalBinary(leftValue, op, rightValue)
-  | ExprGrouping(expr) => evaluate(expr)
+  | ExprGrouping(expr) => evaluate(env, expr)
   | ExprLiteral(value) => value
   | ExprUnary(op, right) =>
-    let rightValue = evaluate(right)
+    let rightValue = evaluate(env, right)
 
     evalUnary(op, rightValue)
   | ExprConditional(cond, then, else_) =>
-    let condValue = evaluate(cond)
+    let condValue = evaluate(env, cond)
 
-    evalConditional(condValue, then, else_)
+    evalConditional(env, condValue, then, else_)
+  | ExprVariable(name) =>
+    switch Env.get(env, name) {
+    | Some(value) => value
+    | None => raise(EvalError("Undefined variable '" ++ name ++ "'.", expr.exprLoc))
+    }
   }
 
 and evalBinary = (left, {bopDesc, bopLoc}, right) =>
@@ -77,26 +82,34 @@ and evalUnary = ({uopDesc, uopLoc}, right) =>
   | UopNot => VBool(!isTruthy(right))
   }
 
-and evalConditional = (cond, then, else_) =>
+and evalConditional = (env, cond, then, else_) =>
   if isTruthy(cond) {
-    evaluate(then)
+    evaluate(env, then)
   } else {
-    evaluate(else_)
+    evaluate(env, else_)
   }
 
-let execute = (stmt: Ast.stmt) =>
+let execute = (env: Env.t, stmt: Ast.stmt) =>
   switch stmt.stmtDesc {
   | StmtExpression(expr) =>
-    let _: Value.t = evaluate(expr)
+    let _: Value.t = evaluate(env, expr)
 
   | StmtPrint(expr) =>
-    let value = evaluate(expr)
+    let value = evaluate(env, expr)
     Js.log(Value.print(value))
+
+  | StmtVar(name, initExpr) =>
+    let value = evaluate(env, initExpr)
+
+    Env.define(env, name, value)
   }
 
-let interpret = (program: list<Ast.stmt>) =>
-  switch List.forEach(program, execute) {
+let interpret = (program: list<Ast.stmt>) => {
+  let env = Env.make()
+
+  switch List.forEach(program, execute(env)) {
   | () => Ok()
   | exception EvalError(msg, loc) => Error(msg, loc)
   }
+}
 
