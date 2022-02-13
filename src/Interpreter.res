@@ -48,6 +48,12 @@ let rec evaluate: (Env.t, Ast.expr) => value = (env, expr) =>
     | Some(value) => value
     | None => raise(EvalError("Undefined variable '" ++ name ++ "'.", expr.exprLoc))
     }
+  | ExprAssign(name, expr) =>
+    let value = evaluate(env, expr)
+    switch Env.assign(env, name, value) {
+    | Ok() => value
+    | Error() => raise(EvalError("Undefined variable '" ++ name ++ "'.", expr.exprLoc))
+    }
   }
 
 and evalBinary = (left, {bopDesc, bopLoc}, right) =>

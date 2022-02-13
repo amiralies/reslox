@@ -43,14 +43,14 @@ let consumeMapOrRaise = (parser, f, message) =>
 
 let rec expression = parser => commaSequence(parser)
 and commaSequence = parser => {
-  let expr = conditional(parser)
+  let expr = assignment(parser)
 
   let rec loop = left =>
     switch peek(parser).val {
     | Comma =>
       let opLoc = peek(parser).loc
       advance(parser)
-      let right = conditional(parser)
+      let right = assignment(parser)
       let op = Ast.Helper.Expr.bop(~loc=opLoc, BopCommaSeq)
       loop(Ast.Helper.Expr.binary(left, op, right))
 
@@ -58,6 +58,23 @@ and commaSequence = parser => {
     }
 
   loop(expr)
+}
+and assignment = parser => {
+  let expr = conditional(parser)
+
+  switch peek(parser).val {
+  | Equal =>
+    advance(parser)
+    switch expr.exprDesc {
+    | ExprVariable(name) =>
+      let rhsExpr = assignment(parser)
+      let loc = {start: expr.exprLoc.start, end: rhsExpr.exprLoc.end}
+
+      Ast.Helper.Expr.assign(~loc, name, rhsExpr)
+    | _ => raise(ParseError("Invalid assignment target.", expr.exprLoc))
+    }
+  | _ => expr
+  }
 }
 and conditional = parser => {
   let expr = equality(parser)

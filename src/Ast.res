@@ -9,6 +9,7 @@ and exprDesc =
   | ExprUnary(uop, expr)
   | ExprConditional(expr, expr, expr)
   | ExprVariable(string)
+  | ExprAssign(string, expr)
 and bop = {
   bopDesc: bopDesc,
   bopLoc: Location.t,
@@ -64,6 +65,7 @@ module Helper = {
     let conditional = (~loc, condition, then, else_) =>
       mk(~loc, ExprConditional(condition, then, else_))
     let variable = (~loc, name) => mk(~loc, ExprVariable(name))
+    let assign = (~loc, name, expr) => mk(~loc, ExprAssign(name, expr))
 
     let bop = (~loc, desc) => {
       bopDesc: desc,
