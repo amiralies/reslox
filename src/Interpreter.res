@@ -95,7 +95,7 @@ and evalConditional = (env, cond, then, else_) =>
     evaluate(env, else_)
   }
 
-let execute = (env: Env.t, stmt: Ast.stmt) =>
+let rec execute = (env: Env.t, stmt: Ast.stmt) =>
   switch stmt.stmtDesc {
   | StmtExpression(expr) =>
     let _: Value.t = evaluate(env, expr)
@@ -108,7 +108,14 @@ let execute = (env: Env.t, stmt: Ast.stmt) =>
     let value = evaluate(env, initExpr)
 
     Env.define(env, name, value)
+
+  | StmtBlock(statements) =>
+    let newEnv = Env.make(~enclosing=env, ())
+    executeBlock(newEnv, statements)
   }
+and executeBlock = (env, statements) => {
+  List.forEach(statements, execute(env))
+}
 
 let interpret = (program: list<Ast.stmt>) => {
   let env = Env.make()

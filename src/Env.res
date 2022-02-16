@@ -1,18 +1,28 @@
 module H = HashMap.String
 
-type t = HashMap.String.t<Value.t>
+type rec t = {
+  current: HashMap.String.t<Value.t>,
+  enclosing: option<t>,
+}
 
-let make = () => H.make(~hintSize=20)
+let make = (~enclosing=?, ()) => {current: H.make(~hintSize=20), enclosing: enclosing}
 
-let define = (t, name, value) => t->H.set(name, value)
+let define = (t, name, value) => t.current->H.set(name, value)
 
-let get = (t, name) => t->H.get(name)
+let rec get = (t, name) =>
+  switch t.current->H.get(name) {
+  | Some(v) => Some(v)
+  | None => t.enclosing->Option.flatMap(get(_, name))
+  }
 
-let assign = (t, name, value) =>
-  if H.has(t, name) {
-    t->H.set(name, value)
+let rec assign = (t, name, value) =>
+  if H.has(t.current, name) {
+    t.current->H.set(name, value)
     Ok()
   } else {
-    Error()
+    switch t.enclosing {
+    | None => Error()
+    | Some(enc) => enc->assign(name, value)
+    }
   }
 

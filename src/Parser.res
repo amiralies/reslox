@@ -310,36 +310,6 @@ let synchronize = parser => {
   loop(parser)
 }
 
-let rec statement = parser =>
-  switch peek(parser).val {
-  | Print => printStatement(parser)
-  | _ => expressionStatement(parser)
-  }
-and printStatement = parser => {
-  let printLoc = peek(parser).loc
-  advance(parser) // Consume print token
-  let expr = expression(parser)
-  let {loc: semiLoc} = consumeIfOrRaise(
-    parser,
-    peek => peek == SemiColon,
-    "Expected ';' after value.",
-  )
-  let loc = {start: printLoc.start, end: semiLoc.end}
-
-  Ast.Helper.Stmt.print(~loc, expr)
-}
-and expressionStatement = parser => {
-  let expr = expression(parser)
-  let {loc: semiLoc} = consumeIfOrRaise(
-    parser,
-    peek => peek == SemiColon,
-    "Expected ';' after expression.",
-  )
-  let loc = {start: expr.exprLoc.start, end: semiLoc.end}
-
-  Ast.Helper.Stmt.expression(~loc, expr)
-}
-
 let rec declaration = parser => {
   try Ok(
     switch peek(parser).val {
@@ -381,6 +351,63 @@ and varDeclaration = parser => {
   let loc = {start: varLoc.start, end: semiLoc.end}
 
   Ast.Helper.Stmt.var(~loc, name, initilizer)
+}
+and statement = parser =>
+  switch peek(parser).val {
+  | Print => printStatement(parser)
+  | LeftBrace => blockStatement(parser)
+  | _ => expressionStatement(parser)
+  }
+and printStatement = parser => {
+  let printLoc = peek(parser).loc
+  advance(parser) // Consume print token
+  let expr = expression(parser)
+  let {loc: semiLoc} = consumeIfOrRaise(
+    parser,
+    peek => peek == SemiColon,
+    "Expected ';' after value.",
+  )
+  let loc = {start: printLoc.start, end: semiLoc.end}
+
+  Ast.Helper.Stmt.print(~loc, expr)
+}
+and expressionStatement = parser => {
+  let expr = expression(parser)
+  let {loc: semiLoc} = consumeIfOrRaise(
+    parser,
+    peek => peek == SemiColon,
+    "Expected ';' after expression.",
+  )
+  let loc = {start: expr.exprLoc.start, end: semiLoc.end}
+
+  Ast.Helper.Stmt.expression(~loc, expr)
+}
+
+and blockStatement = parser => {
+  let leftBraceLoc = peek(parser).loc
+  advance(parser) // Consume leftbrace token
+
+  let rec loop = acc =>
+    if peek(parser).val == RightBrace || isAtEnd(parser) {
+      List.reverse(acc)
+    } else {
+      let item = declaration(parser)
+      switch item {
+      | Ok(item) => loop(list{item, ...acc})
+      | Error(msg, loc) => raise(ParseError(msg, loc))
+      }
+    }
+
+  let items = loop(list{})
+
+  let {loc: rightBraceLoc} = consumeIfOrRaise(
+    parser,
+    peek => peek == RightBrace,
+    "Expect '}' after block.",
+  )
+  let loc = {start: leftBraceLoc.start, end: rightBraceLoc.end}
+
+  Ast.Helper.Stmt.block(~loc, items)
 }
 
 let parse = parser => {

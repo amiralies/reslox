@@ -1,6 +1,6 @@
 type t
 
-let make: unit => t
+let make: (~enclosing: t=?, unit) => t
 
 let define: (t, string, Value.t) => unit
 
