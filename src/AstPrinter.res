@@ -4,7 +4,8 @@ let rec print = expr =>
   | ExprGrouping(expr) => parenthesize("group", list{expr})
   | ExprLiteral(literal) => printLiteralValue(literal)
   | ExprUnary(op, expr) => parenthesize(printUnaryOp(op), list{expr})
-  | ExprConditional(condition, then, else_) => parenthesize("?:", list{condition, then, else_})
+  | ExprConditional(condition, thenBRanch, elseBranch) =>
+    parenthesize("?:", list{condition, thenBRanch, elseBranch})
   | ExprVariable(name) => name
   | ExprAssign(name, expr) => parenthesize("= " ++ name, list{expr})
   }
@@ -39,4 +40,3 @@ and printUnaryOp = uop =>
   | UopNegative => "-"
   | UopNot => "!"
   }
-

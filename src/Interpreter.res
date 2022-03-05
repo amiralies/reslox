@@ -39,10 +39,10 @@ let rec evaluate: (Env.t, Ast.expr) => value = (env, expr) =>
     let rightValue = evaluate(env, right)
 
     evalUnary(op, rightValue)
-  | ExprConditional(cond, then, else_) =>
+  | ExprConditional(cond, thenBranch, elseBranch) =>
     let condValue = evaluate(env, cond)
 
-    evalConditional(env, condValue, then, else_)
+    evalConditional(env, condValue, thenBranch, elseBranch)
   | ExprVariable(name) =>
     switch Env.get(env, name) {
     | Some(value) => value
@@ -88,11 +88,11 @@ and evalUnary = ({uopDesc, uopLoc}, right) =>
   | UopNot => VBool(!isTruthy(right))
   }
 
-and evalConditional = (env, cond, then, else_) =>
+and evalConditional = (env, cond, thenBranch, elseBranch) =>
   if isTruthy(cond) {
-    evaluate(env, then)
+    evaluate(env, thenBranch)
   } else {
-    evaluate(env, else_)
+    evaluate(env, elseBranch)
   }
 
 let rec execute = (env: Env.t, stmt: Ast.stmt) =>

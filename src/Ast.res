@@ -64,8 +64,8 @@ module Helper = {
     let grouping = (~loc, inner) => mk(~loc, ExprGrouping(inner))
     let literal = (~loc, value) => mk(~loc, ExprLiteral(value))
     let unary = (~loc, uop, right) => mk(~loc, ExprUnary(uop, right))
-    let conditional = (~loc, condition, then, else_) =>
-      mk(~loc, ExprConditional(condition, then, else_))
+    let conditional = (~loc, condition, thenBranch, elseBranch) =>
+      mk(~loc, ExprConditional(condition, thenBranch, elseBranch))
     let variable = (~loc, name) => mk(~loc, ExprVariable(name))
     let assign = (~loc, name, expr) => mk(~loc, ExprAssign(name, expr))
 
@@ -90,6 +90,6 @@ module Helper = {
     let expression = (~loc, expr) => mk(~loc, StmtExpression(expr))
     let var = (~loc, name, expr) => mk(~loc, StmtVar(name, expr))
     let block = (~loc, items) => mk(~loc, StmtBlock(items))
-    let if_ = (~loc, condition, then, else_) => mk(~loc, StmtIf(condition, then, else_))
+    let if_ = (~loc, condition, thenBranch, elseBranch) => mk(~loc, StmtIf(condition, thenBranch, elseBranch))
   }
 }
