@@ -112,6 +112,15 @@ let rec execute = (env: Env.t, stmt: Ast.stmt) =>
   | StmtBlock(statements) =>
     let newEnv = Env.make(~enclosing=env, ())
     executeBlock(newEnv, statements)
+
+  | StmtIf(condition, thenBranch, elseBranch) =>
+    let conditionValue = evaluate(env, condition)
+
+    if isTruthy(conditionValue) {
+      execute(env, thenBranch)
+    } else {
+      Option.forEach(elseBranch, execute(env, _))
+    }
   }
 and executeBlock = (env, statements) => {
   List.forEach(statements, execute(env))
@@ -125,4 +134,3 @@ let interpret = (program: list<Ast.stmt>) => {
   | exception EvalError(msg, loc) => Error(msg, loc)
   }
 }
-

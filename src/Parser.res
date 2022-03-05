@@ -354,10 +354,34 @@ and varDeclaration = parser => {
 }
 and statement = parser =>
   switch peek(parser).val {
+  | If => ifStatement(parser)
   | Print => printStatement(parser)
   | LeftBrace => blockStatement(parser)
   | _ => expressionStatement(parser)
   }
+and ifStatement = parser => {
+  let ifLoc = peek(parser).loc
+  advance(parser) // Consume if token
+  let _ = consumeIfOrRaise(parser, peek => peek == LeftParen, "Expect '(' after 'if'.")
+  let condition = expression(parser)
+  let _ = consumeIfOrRaise(parser, peek => peek == RightParen, "Expect ')' after 'if' condition.")
+
+  let thenBranch = statement(parser)
+
+  let elseBranch = switch peek(parser).val {
+  | Else =>
+    advance(parser) // Consume else token
+
+    let elseStmt = statement(parser)
+    Some(elseStmt)
+  | _ => None
+  }
+
+  let endingStmt = Option.getWithDefault(elseBranch, thenBranch)
+  let loc = {start: ifLoc.start, end: endingStmt.stmtLoc.end}
+
+  Ast.Helper.Stmt.if_(~loc, condition, thenBranch, elseBranch)
+}
 and printStatement = parser => {
   let printLoc = peek(parser).loc
   advance(parser) // Consume print token
@@ -440,4 +464,3 @@ let parse = parser => {
     Error(errorItems)
   }
 }
-

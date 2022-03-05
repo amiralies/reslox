@@ -43,6 +43,7 @@ and stmtDesc =
   | StmtExpression(expr)
   | StmtVar(string, expr)
   | StmtBlock(list<stmt>)
+  | StmtIf(expr, stmt, option<stmt>)
 
 module Helper = {
   open Location
@@ -89,6 +90,6 @@ module Helper = {
     let expression = (~loc, expr) => mk(~loc, StmtExpression(expr))
     let var = (~loc, name, expr) => mk(~loc, StmtVar(name, expr))
     let block = (~loc, items) => mk(~loc, StmtBlock(items))
+    let if_ = (~loc, condition, then, else_) => mk(~loc, StmtIf(condition, then, else_))
   }
 }
-
