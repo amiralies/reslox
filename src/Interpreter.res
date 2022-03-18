@@ -54,6 +54,23 @@ let rec evaluate: (Env.t, Ast.expr) => value = (env, expr) =>
     | Ok() => value
     | Error() => raise(EvalError("Undefined variable '" ++ name ++ "'.", expr.exprLoc))
     }
+  | ExprLogical(left, op, right) =>
+    switch op.lopDesc {
+    | LopOr =>
+      let leftValue = evaluate(env, left)
+      if isTruthy(leftValue) {
+        leftValue
+      } else {
+        evaluate(env, right)
+      }
+    | LopAnd =>
+      let leftValue = evaluate(env, left)
+      if isTruthy(leftValue) {
+        evaluate(env, right)
+      } else {
+        leftValue
+      }
+    }
   }
 
 and evalBinary = (left, {bopDesc, bopLoc}, right) =>

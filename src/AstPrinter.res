@@ -8,6 +8,7 @@ let rec print = expr =>
     parenthesize("?:", list{condition, thenBRanch, elseBranch})
   | ExprVariable(name) => name
   | ExprAssign(name, expr) => parenthesize("= " ++ name, list{expr})
+  | ExprLogical(left, op, right) => parenthesize(printLogicalOp(op), list{left, right})
   }
 and parenthesize = (name: string, exprs: list<Ast.expr>) => {
   let exprsJoined = exprs->List.map(print)->String.concat(" ", _)
@@ -26,6 +27,12 @@ and printBinaryOp = bop =>
   | BopMul => "*"
   | BopDiv => "/"
   | BopCommaSeq => ","
+  }
+
+and printLogicalOp = lop =>
+  switch lop.lopDesc {
+  | LopOr => "or"
+  | LopAnd => "and"
   }
 
 and printLiteralValue = value =>

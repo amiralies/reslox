@@ -77,7 +77,7 @@ and assignment = parser => {
   }
 }
 and conditional = parser => {
-  let expr = equality(parser)
+  let expr = logicOr(parser)
 
   let rec loop = left =>
     switch peek(parser).val {
@@ -92,6 +92,41 @@ and conditional = parser => {
       let right = conditional(parser)
       let loc = {start: left.Ast.exprLoc.start, end: right.exprLoc.end}
       loop(Ast.Helper.Expr.conditional(~loc, left, middle, right))
+
+    | _ => left
+    }
+
+  loop(expr)
+}
+and logicOr = parser => {
+  let expr = logicAnd(parser)
+
+  let rec loop = left =>
+    switch peek(parser).val {
+    | Or =>
+      let opLoc = peek(parser).loc
+      advance(parser)
+      let right = logicAnd(parser)
+      let op = Ast.Helper.Expr.lop(~loc=opLoc, LopOr)
+      loop(Ast.Helper.Expr.logical(left, op, right))
+
+    | _ => left
+    }
+
+  loop(expr)
+}
+
+and logicAnd = parser => {
+  let expr = equality(parser)
+
+  let rec loop = left =>
+    switch peek(parser).val {
+    | And =>
+      let opLoc = peek(parser).loc
+      advance(parser)
+      let right = equality(parser)
+      let op = Ast.Helper.Expr.lop(~loc=opLoc, LopAnd)
+      loop(Ast.Helper.Expr.logical(left, op, right))
 
     | _ => left
     }

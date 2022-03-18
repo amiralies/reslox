@@ -10,6 +10,7 @@ and exprDesc =
   | ExprConditional(expr, expr, expr)
   | ExprVariable(string)
   | ExprAssign(string, expr)
+  | ExprLogical(expr, lop, expr)
 and bop = {
   bopDesc: bopDesc,
   bopLoc: Location.t,
@@ -33,6 +34,13 @@ and uop = {
 and uopDesc =
   | UopNegative
   | UopNot
+and lop = {
+  lopDesc: lopDesc,
+  lopLoc: Location.t,
+}
+and lopDesc =
+  | LopOr
+  | LopAnd
 
 type rec stmt = {
   stmtDesc: stmtDesc,
@@ -68,6 +76,13 @@ module Helper = {
       mk(~loc, ExprConditional(condition, thenBranch, elseBranch))
     let variable = (~loc, name) => mk(~loc, ExprVariable(name))
     let assign = (~loc, name, expr) => mk(~loc, ExprAssign(name, expr))
+    let logical = (left, lop, right) => {
+      let loc = {
+        start: left.exprLoc.start,
+        end: right.exprLoc.end,
+      }
+      mk(~loc, ExprLogical(left, lop, right))
+    }
 
     let bop = (~loc, desc) => {
       bopDesc: desc,
@@ -77,6 +92,11 @@ module Helper = {
     let uop = (~loc, desc) => {
       uopDesc: desc,
       uopLoc: loc,
+    }
+
+    let lop = (~loc, desc) => {
+      lopDesc: desc,
+      lopLoc: loc,
     }
   }
 
@@ -90,6 +110,7 @@ module Helper = {
     let expression = (~loc, expr) => mk(~loc, StmtExpression(expr))
     let var = (~loc, name, expr) => mk(~loc, StmtVar(name, expr))
     let block = (~loc, items) => mk(~loc, StmtBlock(items))
-    let if_ = (~loc, condition, thenBranch, elseBranch) => mk(~loc, StmtIf(condition, thenBranch, elseBranch))
+    let if_ = (~loc, condition, thenBranch, elseBranch) =>
+      mk(~loc, StmtIf(condition, thenBranch, elseBranch))
   }
 }
