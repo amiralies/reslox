@@ -138,6 +138,13 @@ let rec execute = (env: Env.t, stmt: Ast.stmt) =>
     } else {
       Option.forEach(elseBranch, execute(env, _))
     }
+
+  | StmtWhile(condition, body) =>
+    let conditionValue = evaluate(env, condition)
+    if isTruthy(conditionValue) {
+      execute(env, body)
+      execute(env, stmt)
+    }
   }
 and executeBlock = (env, statements) => {
   List.forEach(statements, execute(env))

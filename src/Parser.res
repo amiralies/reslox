@@ -389,11 +389,29 @@ and varDeclaration = parser => {
 }
 and statement = parser =>
   switch peek(parser).val {
+  | While => whileStatement(parser)
   | If => ifStatement(parser)
   | Print => printStatement(parser)
   | LeftBrace => blockStatement(parser)
   | _ => expressionStatement(parser)
   }
+and whileStatement = parser => {
+  let whileLoc = peek(parser).loc
+  advance(parser) // Consume while token
+  let _ = consumeIfOrRaise(parser, peek => peek == LeftParen, "Expect '(' after 'while'.")
+  let condition = expression(parser)
+  let _ = consumeIfOrRaise(
+    parser,
+    peek => peek == RightParen,
+    "Expect ')' after 'while' condition.",
+  )
+
+  let body = statement(parser)
+
+  let loc = {start: whileLoc.start, end: body.stmtLoc.end}
+
+  Ast.Helper.Stmt.while_(~loc, condition, body)
+}
 and ifStatement = parser => {
   let ifLoc = peek(parser).loc
   advance(parser) // Consume if token

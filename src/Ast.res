@@ -52,6 +52,7 @@ and stmtDesc =
   | StmtVar(string, expr)
   | StmtBlock(list<stmt>)
   | StmtIf(expr, stmt, option<stmt>)
+  | StmtWhile(expr, stmt)
 
 module Helper = {
   open Location
@@ -112,5 +113,6 @@ module Helper = {
     let block = (~loc, items) => mk(~loc, StmtBlock(items))
     let if_ = (~loc, condition, thenBranch, elseBranch) =>
       mk(~loc, StmtIf(condition, thenBranch, elseBranch))
+    let while_ = (~loc, condition, body) => mk(~loc, StmtWhile(condition, body))
   }
 }
