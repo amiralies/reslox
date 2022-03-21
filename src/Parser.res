@@ -263,9 +263,53 @@ and unary = parser =>
     let op = Ast.Helper.Expr.uop(~loc=opLoc, UopNegative)
     Ast.Helper.Expr.unary(~loc, op, right)
 
-  | _ => primary(parser)
+  | _ => call(parser)
   }
 
+and call = parser => {
+  let expr = primary(parser)
+
+  let rec loop = (acc, parser) =>
+    switch peek(parser).val {
+    | LeftParen =>
+      let (args, rightParenLoc) = parseArgs(parser)
+
+      let loc = {start: acc.exprLoc.start, end: rightParenLoc.end}
+      let callExpr = Ast.Helper.Expr.call(~loc, acc, args)
+
+      loop(callExpr, parser)
+
+    | _ => acc
+    }
+
+  loop(expr, parser)
+}
+and parseArgs = parser => {
+  advance(parser) // consume left paren
+
+  let rec loop = (acc, parser) => {
+    let arg = expression(parser)
+    if peek(parser).val == Comma {
+      advance(parser)
+      loop(list{arg, ...acc}, parser)
+    } else {
+      let {loc: rightParenLoc} = consumeIfOrRaise(
+        parser,
+        peek => peek == RightParen,
+        "Expect ')' after arguments.",
+      )
+      (List.reverse(acc), rightParenLoc)
+    }
+  }
+
+  if peek(parser).val == RightParen {
+    let rightParenLoc = peek(parser).loc
+    advance(parser)
+    (list{}, rightParenLoc)
+  } else {
+    loop(list{}, parser)
+  }
+}
 and primary = parser =>
   switch peek(parser).val {
   | True =>

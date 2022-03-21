@@ -11,6 +11,7 @@ and exprDesc =
   | ExprVariable(string)
   | ExprAssign(string, expr)
   | ExprLogical(expr, lop, expr)
+  | ExprCall(expr, list<expr>)
 and bop = {
   bopDesc: bopDesc,
   bopLoc: Location.t,
@@ -84,6 +85,7 @@ module Helper = {
       }
       mk(~loc, ExprLogical(left, lop, right))
     }
+    let call = (~loc, callee, args) => mk(~loc, ExprCall(callee, args))
 
     let bop = (~loc, desc) => {
       bopDesc: desc,
