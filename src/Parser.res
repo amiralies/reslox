@@ -389,12 +389,67 @@ and varDeclaration = parser => {
 }
 and statement = parser =>
   switch peek(parser).val {
+  | For => forStatement(parser)
   | While => whileStatement(parser)
   | If => ifStatement(parser)
   | Print => printStatement(parser)
   | LeftBrace => blockStatement(parser)
   | _ => expressionStatement(parser)
   }
+and forStatement = parser => {
+  let forLoc = peek(parser).loc
+  advance(parser) // Consume for token
+  let _ = consumeIfOrRaise(parser, peek => peek == LeftParen, "Expect '(' after 'for'.")
+
+  let maybeInitilizer = switch peek(parser).val {
+  | SemiColon =>
+    advance(parser) // consume semicolon
+    None
+  | Var => varDeclaration(parser)->Some
+  | _ => expressionStatement(parser)->Some
+  }
+
+  let condition = switch peek(parser).val {
+  | SemiColon =>
+    advance(parser) // consume semicolon
+    Ast.Helper.Expr.literal(~loc=Location.dummy, VBool(true))
+  | _ =>
+    let expr = expression(parser)
+    let _ = consumeIfOrRaise(parser, peek => peek == SemiColon, "Expect ';' after loop condition.")
+    expr
+  }
+
+  let maybeIncrement = switch peek(parser).val {
+  | SemiColon =>
+    advance(parser) // consume semicolon
+    None
+  | _ =>
+    let expr = expression(parser)
+    let _ = consumeIfOrRaise(parser, peek => peek == RightParen, "Expect ')' after for clauses.")
+    Some(expr)
+  }
+
+  let body = statement(parser)
+
+  let body = switch maybeIncrement {
+  | None => body
+  | Some(increment) =>
+    Ast.Helper.Stmt.block(
+      ~loc=body.stmtLoc,
+      list{body, Ast.Helper.Stmt.expression(~loc=increment.exprLoc, increment)},
+    )
+  }
+
+  let body = Ast.Helper.Stmt.while_(~loc=body.stmtLoc, condition, body)
+
+  let loc = {start: forLoc.start, end: body.stmtLoc.end}
+  let body = switch maybeInitilizer {
+  | None => body
+  | Some(initilizer) => Ast.Helper.Stmt.block(~loc, list{initilizer, body})
+  }
+
+  body
+}
 and whileStatement = parser => {
   let whileLoc = peek(parser).loc
   advance(parser) // Consume while token
