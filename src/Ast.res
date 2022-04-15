@@ -27,7 +27,6 @@ and bopDesc =
   | BopSub
   | BopMul
   | BopDiv
-  | BopCommaSeq
 and uop = {
   uopDesc: uopDesc,
   uopLoc: Location.t,

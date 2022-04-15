@@ -27,7 +27,6 @@ and printBinaryOp = bop =>
   | BopSub => "-"
   | BopMul => "*"
   | BopDiv => "/"
-  | BopCommaSeq => ","
   }
 
 and printLogicalOp = lop =>

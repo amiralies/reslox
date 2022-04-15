@@ -113,7 +113,6 @@ and evalBinary = (left, {bopDesc, bopLoc}, right) =>
   | BopLessEqual => applyComparisonOrRaise(bopLoc, left, right, (l, r) => l <= r)
   | BopEqual => VBool(left == right)
   | BopNotEqual => VBool(left != right)
-  | BopCommaSeq => right
   }
 
 and evalUnary = ({uopDesc, uopLoc}, right) =>

@@ -41,24 +41,7 @@ let consumeMapOrRaise = (parser, f, message) =>
   | None => raise(ParseError(message, peek(parser).loc))
   }
 
-let rec expression = parser => commaSequence(parser)
-and commaSequence = parser => {
-  let expr = assignment(parser)
-
-  let rec loop = left =>
-    switch peek(parser).val {
-    | Comma =>
-      let opLoc = peek(parser).loc
-      advance(parser)
-      let right = assignment(parser)
-      let op = Ast.Helper.Expr.bop(~loc=opLoc, BopCommaSeq)
-      loop(Ast.Helper.Expr.binary(left, op, right))
-
-    | _ => left
-    }
-
-  loop(expr)
-}
+let rec expression = parser => assignment(parser)
 and assignment = parser => {
   let expr = conditional(parser)
 
