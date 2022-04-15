@@ -54,6 +54,7 @@ and stmtDesc =
   | StmtIf(expr, stmt, option<stmt>)
   | StmtWhile(expr, stmt)
   | StmtFunction(string, list<string>, list<stmt>)
+  | StmtReturn(option<expr>)
 
 module Helper = {
   open Location
@@ -117,5 +118,6 @@ module Helper = {
       mk(~loc, StmtIf(condition, thenBranch, elseBranch))
     let while_ = (~loc, condition, body) => mk(~loc, StmtWhile(condition, body))
     let function = (~loc, name, parameters, body) => mk(~loc, StmtFunction(name, parameters, body))
+    let return = (~loc, maybeExpr) => mk(~loc, StmtReturn(maybeExpr))
   }
 }

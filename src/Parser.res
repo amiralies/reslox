@@ -475,6 +475,7 @@ and varDeclaration = parser => {
 }
 and statement = parser =>
   switch peek(parser).val {
+  | Return => returnStatement(parser)
   | For => forStatement(parser)
   | While => whileStatement(parser)
   | If => ifStatement(parser)
@@ -484,6 +485,27 @@ and statement = parser =>
     Ast.Helper.Stmt.block(~loc, items)
   | _ => expressionStatement(parser)
   }
+and returnStatement = parser => {
+  let returnLoc = peek(parser).loc
+  advance(parser) // Consume return token
+
+  let maybeExpr = switch peek(parser).val {
+  | SemiColon => None
+  | _ =>
+    let expr = expression(parser)
+    Some(expr)
+  }
+
+  let {loc: semiLoc} = consumeIfOrRaise(
+    parser,
+    peek => peek == SemiColon,
+    "Expect ';' after return statement.",
+  )
+
+  let loc = {start: returnLoc.start, end: semiLoc.end}
+
+  Ast.Helper.Stmt.return(~loc, maybeExpr)
+}
 and forStatement = parser => {
   let forLoc = peek(parser).loc
   advance(parser) // Consume for token
