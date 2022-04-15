@@ -1,5 +1,7 @@
 exception EvalError(string, Location.t)
 
+exception Return(Ast.value)
+
 open Ast
 
 let globals = {
@@ -15,7 +17,7 @@ let globals = {
   globals
 }
 
-type rec value = Value.t =
+type rec value = Ast.value =
   | VString(string)
   | VNumber(float)
   | VBool(bool)
@@ -150,11 +152,11 @@ and evalConditional = (env, cond, thenBranch, elseBranch) =>
 let rec execute = (env: Env.t, stmt: Ast.stmt) =>
   switch stmt.stmtDesc {
   | StmtExpression(expr) =>
-    let _: Value.t = evaluate(env, expr)
+    let _: value = evaluate(env, expr)
 
   | StmtPrint(expr) =>
     let value = evaluate(env, expr)
-    Js.log(Value.print(value))
+    Js.log(Ast.printValue(value))
 
   | StmtVar(name, initExpr) =>
     let value = evaluate(env, initExpr)
@@ -191,13 +193,22 @@ let rec execute = (env: Env.t, stmt: Ast.stmt) =>
           Env.define(env, parameter, arguments->List.getExn(i))
         )
 
-        executeBlock(env, body)
+        let value = try {
+          executeBlock(env, body)
+          VNil
+        } catch {
+        | Return(value) => value
+        }
 
-        VNil
+        value
       },
     })
 
     Env.define(env, name, callable)
+  | StmtReturn(maybeExpr) =>
+    let value = maybeExpr->Option.mapWithDefault(VNil, evaluate(env, _))
+
+    raise(Return(value))
   }
 and executeBlock = (env, statements) => {
   List.forEach(statements, execute(env))

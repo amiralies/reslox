@@ -1,7 +1,7 @@
 module H = HashMap.String
 
 type rec t = {
-  current: HashMap.String.t<Value.t>,
+  current: HashMap.String.t<Ast.value>,
   enclosing: option<t>,
 }
 
@@ -25,4 +25,3 @@ let rec assign = (t, name, value) =>
     | Some(enc) => enc->assign(name, value)
     }
   }
-

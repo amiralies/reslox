@@ -5,7 +5,7 @@ type rec expr = {
 and exprDesc =
   | ExprBinary(expr, bop, expr)
   | ExprGrouping(expr)
-  | ExprLiteral(Value.t) // TODO located?
+  | ExprLiteral(value)
   | ExprUnary(uop, expr)
   | ExprConditional(expr, expr, expr)
   | ExprVariable(string)
@@ -42,7 +42,7 @@ and lopDesc =
   | LopOr
   | LopAnd
 
-type rec stmt = {
+and stmt = {
   stmtDesc: stmtDesc,
   stmtLoc: Location.t,
 }
@@ -55,6 +55,13 @@ and stmtDesc =
   | StmtWhile(expr, stmt)
   | StmtFunction(string, list<string>, list<stmt>)
   | StmtReturn(option<expr>)
+
+and value =
+  | VString(string)
+  | VNumber(float)
+  | VBool(bool)
+  | VNil
+  | VCallable({toString: string, arity: int, call: list<value> => value})
 
 module Helper = {
   open Location
@@ -121,3 +128,12 @@ module Helper = {
     let return = (~loc, maybeExpr) => mk(~loc, StmtReturn(maybeExpr))
   }
 }
+
+let printValue = value =>
+  switch value {
+  | VString(s) => s
+  | VNumber(f) => Float.toString(f)
+  | VBool(b) => b ? "true" : "false"
+  | VNil => "nil"
+  | VCallable({toString}) => toString
+  }
