@@ -2,12 +2,25 @@ exception EvalError(string, Location.t)
 
 open Ast
 
+let globals = {
+  let globals = Env.make()
+  globals->Env.define(
+    "clock",
+    VCallable({
+      toString: "<native fn>",
+      arity: 0,
+      call: _ => VNumber((Js.Date.now() /. 1000.0)->Js.Math.floor_float),
+    }),
+  )
+  globals
+}
+
 type rec value = Value.t =
   | VString(string)
   | VNumber(float)
   | VBool(bool)
   | VNil
-  | VCallable({arity: int, call: list<value> => value})
+  | VCallable({toString: string, arity: int, call: list<value> => value})
 
 let isTruthy = value =>
   switch value {
@@ -167,19 +180,31 @@ let rec execute = (env: Env.t, stmt: Ast.stmt) =>
       execute(env, body)
       execute(env, stmt)
     }
+  | StmtFunction(name, parameters, body) =>
+    let callable = VCallable({
+      toString: "<fn " ++ name ++ ">",
+      arity: parameters->List.length,
+      call: arguments => {
+        let env = Env.make(~enclosing=globals, ())
+
+        parameters->List.forEachWithIndex((i, parameter) =>
+          Env.define(env, parameter, arguments->List.getExn(i))
+        )
+
+        executeBlock(env, body)
+
+        VNil
+      },
+    })
+
+    Env.define(env, name, callable)
   }
 and executeBlock = (env, statements) => {
   List.forEach(statements, execute(env))
 }
 
 let interpret = (program: list<Ast.stmt>) => {
-  let globals = Env.make()
-  globals->Env.define(
-    "clock",
-    VCallable({arity: 0, call: _ => VNumber((Js.Date.now() /. 1000.0)->Js.Math.floor_float)}),
-  )
-
-  let env = globals
+  let env = Env.make(~enclosing=globals, ())
 
   switch List.forEach(program, execute(env)) {
   | () => Ok()

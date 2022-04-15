@@ -281,7 +281,7 @@ and parseArgs = parser => {
         peek => peek == RightParen,
         "Expect ')' after arguments.",
       )
-      (List.reverse(acc), rightParenLoc)
+      (List.reverse(list{arg, ...acc}), rightParenLoc)
     }
   }
 
@@ -405,12 +405,8 @@ and function = (kind, parser) => {
     "Expect '(' after " ++ kind ++ " name.",
   )
 
-  let rec loop = (acc, parser) =>
-    switch peek(parser).val {
-    | RightParen =>
-      advance(parser)
-      List.reverse(acc)
-    | _ =>
+  let parameters = {
+    let rec loop = (acc, parser) => {
       let {val: paramName} = consumeMapOrRaise(
         parser,
         token =>
@@ -425,11 +421,19 @@ and function = (kind, parser) => {
         advance(parser)
         loop(list{paramName, ...acc}, parser)
       } else {
-        raise(ParseError("Expect ')' after parameters.", peek(parser).loc))
+        let _ = consumeIfOrRaise(parser, t => t === RightParen, "Expect ')' after parameters.")
+        List.reverse(list{paramName, ...acc})
       }
     }
 
-  let parameters = loop(list{}, parser)
+    if peek(parser).val == RightParen {
+      advance(parser)
+      list{}
+    } else {
+      loop(list{}, parser)
+    }
+  }
+
   if peek(parser).val != LeftBrace {
     raise(ParseError("Expect '{' before " ++ kind ++ " body.", peek(parser).loc))
   } else {
