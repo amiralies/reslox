@@ -1,8 +1,10 @@
 exception EvalError(string, Location.t)
 
-exception Return(Ast.value)
+exception Return(Value.t)
 
 open Ast
+
+open Value
 
 let globals = {
   let globals = Env.make()
@@ -35,7 +37,7 @@ let applyComparisonOrRaise = (opLoc, left, right, p) =>
   | _ => raise(EvalError("Operands should be numbers", opLoc))
   }
 
-let rec evaluate: (Env.t, Ast.expr) => value = (env, expr) =>
+let rec evaluate: (Env.t, Ast.expr) => Value.t = (env, expr) =>
   switch expr.exprDesc {
   | ExprBinary(left, op, right) =>
     let leftValue = evaluate(env, left)
@@ -145,11 +147,11 @@ and evalConditional = (env, cond, thenBranch, elseBranch) =>
 let rec execute = (env: Env.t, stmt: Ast.stmt) =>
   switch stmt.stmtDesc {
   | StmtExpression(expr) =>
-    let _: value = evaluate(env, expr)
+    let _: Value.t = evaluate(env, expr)
 
   | StmtPrint(expr) =>
     let value = evaluate(env, expr)
-    Js.log(Ast.printValue(value))
+    Js.log(Value.printValue(value))
 
   | StmtVar(name, initExpr) =>
     let value = evaluate(env, initExpr)

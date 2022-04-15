@@ -1,7 +1,7 @@
 module H = HashMap.String
 
 type rec t = {
-  current: HashMap.String.t<Ast.value>,
+  current: HashMap.String.t<Value.t>,
   enclosing: option<t>,
 }
 
