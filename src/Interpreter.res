@@ -17,13 +17,6 @@ let globals = {
   globals
 }
 
-type rec value = Ast.value =
-  | VString(string)
-  | VNumber(float)
-  | VBool(bool)
-  | VNil
-  | VCallable({toString: string, arity: int, call: list<value> => value})
-
 let isTruthy = value =>
   switch value {
   | VNil | VBool(false) => false
