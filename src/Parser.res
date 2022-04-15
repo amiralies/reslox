@@ -392,6 +392,7 @@ let synchronize = parser => {
 let rec declaration = parser => {
   try Ok(
     switch peek(parser).val {
+    | Fun => function("function", parser)
     | Var => varDeclaration(parser)
     | _ => statement(parser)
     },
@@ -399,6 +400,60 @@ let rec declaration = parser => {
   | ParseError(msg, loc) =>
     synchronize(parser)
     Error(msg, loc)
+  }
+}
+and function = (kind, parser) => {
+  let funLoc = peek(parser).loc
+  advance(parser) // Consume fun token
+
+  let {val: name} = consumeMapOrRaise(
+    parser,
+    token =>
+      switch token {
+      | Identifier(name) => Some(name)
+      | _ => None
+      },
+    "Expect " ++ kind ++ " name.",
+  )
+
+  let _ = consumeIfOrRaise(
+    parser,
+    peek => peek == LeftParen,
+    "Expect '(' after " ++ kind ++ " name.",
+  )
+
+  let rec loop = (acc, parser) =>
+    switch peek(parser).val {
+    | RightParen =>
+      advance(parser)
+      List.reverse(acc)
+    | _ =>
+      let {val: paramName} = consumeMapOrRaise(
+        parser,
+        token =>
+          switch token {
+          | Identifier(name) => Some(name)
+          | _ => None
+          },
+        "Expect " ++ kind ++ " name.",
+      )
+
+      if peek(parser).val == Comma {
+        advance(parser)
+        loop(list{paramName, ...acc}, parser)
+      } else {
+        raise(ParseError("Expect ')' after parameters.", peek(parser).loc))
+      }
+    }
+
+  let parameters = loop(list{}, parser)
+  if peek(parser).val != LeftBrace {
+    raise(ParseError("Expect '{' before " ++ kind ++ " body.", peek(parser).loc))
+  } else {
+    let (bodyLoc, bodyItems) = blockStatement(parser)
+
+    let loc = {start: funLoc.start, end: bodyLoc.end}
+    Ast.Helper.Stmt.function(~loc, name, parameters, bodyItems)
   }
 }
 and varDeclaration = parser => {
@@ -437,7 +492,9 @@ and statement = parser =>
   | While => whileStatement(parser)
   | If => ifStatement(parser)
   | Print => printStatement(parser)
-  | LeftBrace => blockStatement(parser)
+  | LeftBrace =>
+    let (loc, items) = blockStatement(parser)
+    Ast.Helper.Stmt.block(~loc, items)
   | _ => expressionStatement(parser)
   }
 and forStatement = parser => {
@@ -583,7 +640,7 @@ and blockStatement = parser => {
   )
   let loc = {start: leftBraceLoc.start, end: rightBraceLoc.end}
 
-  Ast.Helper.Stmt.block(~loc, items)
+  (loc, items)
 }
 
 let parse = parser => {

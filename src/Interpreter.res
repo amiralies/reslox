@@ -2,17 +2,17 @@ exception EvalError(string, Location.t)
 
 open Ast
 
-type value = Value.t =
+type rec value = Value.t =
   | VString(string)
   | VNumber(float)
   | VBool(bool)
   | VNil
+  | VCallable({arity: int, call: list<value> => value})
 
 let isTruthy = value =>
   switch value {
-  | Value.VNil => false
-  | VBool(b) => b
-  | VNumber(_) | VString(_) => true
+  | VNil | VBool(false) => false
+  | _ => true
   }
 
 let applyArthimaticOrRaise = (opLoc, left, right, f) =>
@@ -71,6 +71,29 @@ let rec evaluate: (Env.t, Ast.expr) => value = (env, expr) =>
         leftValue
       }
     }
+
+  | ExprCall(callee, arguments) =>
+    let calleeValue = evaluate(env, callee)
+
+    let argumentsValues = arguments->List.map(argument => evaluate(env, argument))
+
+    switch calleeValue {
+    | VCallable(callable) =>
+      if callable.arity == List.length(argumentsValues) {
+        callable.call(argumentsValues)
+      } else {
+        raise(
+          EvalError(
+            "Expected " ++
+            callable.arity->Int.toString ++
+            " arguments but got " ++
+            List.length(arguments)->Int.toString ++ ".",
+            callee.exprLoc,
+          ),
+        )
+      }
+    | _ => raise(EvalError("Can only call functions and classes.", callee.exprLoc))
+    }
   }
 
 and evalBinary = (left, {bopDesc, bopLoc}, right) =>
@@ -98,7 +121,7 @@ and evalUnary = ({uopDesc, uopLoc}, right) =>
   | UopNegative =>
     switch right {
     | VNumber(number) => VNumber(-.number)
-    | VString(_) | VBool(_) | VNil =>
+    | VCallable(_) | VString(_) | VBool(_) | VNil =>
       raise(EvalError("Can't use unary '-' operator on non-number values", uopLoc))
     }
 
@@ -151,7 +174,13 @@ and executeBlock = (env, statements) => {
 }
 
 let interpret = (program: list<Ast.stmt>) => {
-  let env = Env.make()
+  let globals = Env.make()
+  globals->Env.define(
+    "clock",
+    VCallable({arity: 0, call: _ => VNumber((Js.Date.now() /. 1000.0)->Js.Math.floor_float)}),
+  )
+
+  let env = globals
 
   switch List.forEach(program, execute(env)) {
   | () => Ok()
