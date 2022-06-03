@@ -6,7 +6,7 @@ open Ast
 
 open Value
 
-let globals = {
+let global = {
   let globals = Env.make()
   globals->Env.define(
     "clock",
@@ -182,7 +182,7 @@ let rec execute = (env: Env.t, stmt: Ast.stmt) =>
       toString: "<fn " ++ name ++ ">",
       arity: parameters->List.length,
       call: arguments => {
-        let env = Env.make(~enclosing=globals, ())
+        let env = Env.make(~enclosing=global, ())
 
         parameters->List.forEachWithIndex((i, parameter) =>
           Env.define(env, parameter, arguments->List.getExn(i))
@@ -210,7 +210,7 @@ and executeBlock = (env, statements) => {
 }
 
 let interpret = (program: list<Ast.stmt>) => {
-  let env = Env.make(~enclosing=globals, ())
+  let env = global
 
   switch List.forEach(program, execute(env)) {
   | () => Ok()
