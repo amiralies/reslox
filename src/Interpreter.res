@@ -37,7 +37,7 @@ let applyComparisonOrRaise = (opLoc, left, right, p) =>
   | _ => raise(EvalError("Operands should be numbers", opLoc))
   }
 
-let rec evaluate: (Env.t, Ast.expr) => Value.t = (env, expr) =>
+let rec evaluate: (Env.t<'a>, Ast.expr) => Value.t = (env, expr) =>
   switch expr.exprDesc {
   | ExprBinary(left, op, right) =>
     let leftValue = evaluate(env, left)
@@ -144,7 +144,7 @@ and evalConditional = (env, cond, thenBranch, elseBranch) =>
     evaluate(env, elseBranch)
   }
 
-let rec execute = (env: Env.t, stmt: Ast.stmt) =>
+let rec execute = (env: Env.t<'a>, stmt: Ast.stmt) =>
   switch stmt.stmtDesc {
   | StmtExpression(expr) =>
     let _: Value.t = evaluate(env, expr)

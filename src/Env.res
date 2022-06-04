@@ -1,8 +1,8 @@
 module H = HashMap.String
 
-type rec t = {
-  current: HashMap.String.t<Value.t>,
-  enclosing: option<t>,
+type rec t<'a> = {
+  current: HashMap.String.t<'a>,
+  enclosing: option<t<'a>>,
 }
 
 let make = (~enclosing=?, ()) => {current: H.make(~hintSize=20), enclosing: enclosing}
