@@ -13,7 +13,8 @@ let global = {
     VCallable({
       toString: "<native fn>",
       arity: 0,
-      call: _ => VNumber((Js.Date.now() /. 1000.0)->Js.Math.floor_float),
+      closure: Env.make(),
+      call: (_, _) => VNumber((Js.Date.now() /. 1000.0)->Js.Math.floor_float),
     }),
   )
   globals
@@ -90,7 +91,7 @@ let rec evaluate: (Env.t<'a>, Ast.expr) => Value.t = (env, expr) =>
     switch calleeValue {
     | VCallable(callable) =>
       if callable.arity == List.length(argumentsValues) {
-        callable.call(argumentsValues)
+        callable.call(callable.closure, argumentsValues)
       } else {
         raise(
           EvalError(
@@ -181,9 +182,9 @@ let rec execute = (env: Env.t<'a>, stmt: Ast.stmt) =>
     let callable = VCallable({
       toString: "<fn " ++ name ++ ">",
       arity: parameters->List.length,
-      call: arguments => {
-        let env = Env.make(~enclosing=global, ())
-
+      closure: env,
+      call: (closure, arguments) => {
+        let env = Env.make(~enclosing=closure, ())
         parameters->List.forEachWithIndex((i, parameter) =>
           Env.define(env, parameter, arguments->List.getExn(i))
         )

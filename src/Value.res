@@ -3,7 +3,7 @@ type rec t =
   | VNumber(float)
   | VBool(bool)
   | VNil
-  | VCallable({toString: string, arity: int, call: list<t> => t})
+  | VCallable({toString: string, closure: Env.t<t>, arity: int, call: (Env.t<t>, list<t>) => t})
 
 let printValue = value =>
   switch value {
