@@ -49,7 +49,7 @@ type rec stmt = {
 and stmtDesc =
   | StmtPrint(expr)
   | StmtExpression(expr)
-  | StmtVar(string, expr)
+  | StmtVar(string, option<expr>)
   | StmtBlock(list<stmt>)
   | StmtIf(expr, stmt, option<stmt>)
   | StmtWhile(expr, stmt)
@@ -112,7 +112,7 @@ module Helper = {
 
     let print = (~loc, expr) => mk(~loc, StmtPrint(expr))
     let expression = (~loc, expr) => mk(~loc, StmtExpression(expr))
-    let var = (~loc, name, expr) => mk(~loc, StmtVar(name, expr))
+    let var = (~loc, name, maybeExpr) => mk(~loc, StmtVar(name, maybeExpr))
     let block = (~loc, items) => mk(~loc, StmtBlock(items))
     let if_ = (~loc, condition, thenBranch, elseBranch) =>
       mk(~loc, StmtIf(condition, thenBranch, elseBranch))

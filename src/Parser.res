@@ -446,7 +446,7 @@ and function = (kind, parser) => {
 and varDeclaration = parser => {
   let varLoc = peek(parser).loc
   advance(parser) // Consume var token
-  let {val: name, loc: nameLoc} = consumeMapOrRaise(
+  let {val: name} = consumeMapOrRaise(
     parser,
     token =>
       switch token {
@@ -456,11 +456,11 @@ and varDeclaration = parser => {
     "Expect variable name.",
   )
 
-  let initilizer = switch peek(parser).val {
+  let maybeInitilizer = switch peek(parser).val {
   | Equal =>
     advance(parser)
-    expression(parser)
-  | _ => Ast.Helper.Expr.literal(~loc={start: nameLoc.start, end: nameLoc.end}, VNil)
+    Some(expression(parser))
+  | _ => None
   }
 
   let {loc: semiLoc} = consumeIfOrRaise(
@@ -471,7 +471,7 @@ and varDeclaration = parser => {
 
   let loc = {start: varLoc.start, end: semiLoc.end}
 
-  Ast.Helper.Stmt.var(~loc, name, initilizer)
+  Ast.Helper.Stmt.var(~loc, name, maybeInitilizer)
 }
 and statement = parser =>
   switch peek(parser).val {

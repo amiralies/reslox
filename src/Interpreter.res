@@ -154,8 +154,11 @@ let rec execute = (env: Env.t<'a>, stmt: Ast.stmt) =>
     let value = evaluate(env, expr)
     Js.log(Value.printValue(value))
 
-  | StmtVar(name, initExpr) =>
-    let value = evaluate(env, initExpr)
+  | StmtVar(name, maybeInitExpr) =>
+    let value = switch maybeInitExpr {
+    | Some(initExpr) => evaluate(env, initExpr)
+    | None => VNil
+    }
 
     Env.define(env, name, value)
 
