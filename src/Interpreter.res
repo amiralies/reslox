@@ -6,6 +6,8 @@ open Ast
 
 open Value
 
+type t = {mutable env: Env.t<Value.t>}
+
 let global = {
   let globals = Env.make()
   globals->Env.define(
@@ -18,6 +20,10 @@ let global = {
     }),
   )
   globals
+}
+
+let make = () => {
+  env: Env.make(),
 }
 
 let isTruthy = value =>
@@ -38,55 +44,55 @@ let applyComparisonOrRaise = (opLoc, left, right, p) =>
   | _ => raise(EvalError("Operands should be numbers", opLoc))
   }
 
-let rec evaluate: (Env.t<'a>, Ast.expr) => Value.t = (env, expr) =>
+let rec evaluate = (interpreter, expr) =>
   switch expr.exprDesc {
   | ExprBinary(left, op, right) =>
-    let leftValue = evaluate(env, left)
-    let rightValue = evaluate(env, right)
+    let leftValue = evaluate(interpreter, left)
+    let rightValue = evaluate(interpreter, right)
     evalBinary(leftValue, op, rightValue)
-  | ExprGrouping(expr) => evaluate(env, expr)
+  | ExprGrouping(expr) => evaluate(interpreter, expr)
   | ExprLiteral(value) => value
   | ExprUnary(op, right) =>
-    let rightValue = evaluate(env, right)
+    let rightValue = evaluate(interpreter, right)
 
     evalUnary(op, rightValue)
   | ExprConditional(cond, thenBranch, elseBranch) =>
-    let condValue = evaluate(env, cond)
+    let condValue = evaluate(interpreter, cond)
 
-    evalConditional(env, condValue, thenBranch, elseBranch)
+    evalConditional(interpreter, condValue, thenBranch, elseBranch)
   | ExprVariable(name) =>
-    switch Env.get(env, name) {
+    switch Env.get(interpreter.env, name) {
     | Some(value) => value
     | None => raise(EvalError("Undefined variable '" ++ name ++ "'.", expr.exprLoc))
     }
   | ExprAssign(name, expr) =>
-    let value = evaluate(env, expr)
-    switch Env.assign(env, name, value) {
+    let value = evaluate(interpreter, expr)
+    switch Env.assign(interpreter.env, name, value) {
     | Ok() => value
     | Error() => raise(EvalError("Undefined variable '" ++ name ++ "'.", expr.exprLoc))
     }
   | ExprLogical(left, op, right) =>
     switch op.lopDesc {
     | LopOr =>
-      let leftValue = evaluate(env, left)
+      let leftValue = evaluate(interpreter, left)
       if isTruthy(leftValue) {
         leftValue
       } else {
-        evaluate(env, right)
+        evaluate(interpreter, right)
       }
     | LopAnd =>
-      let leftValue = evaluate(env, left)
+      let leftValue = evaluate(interpreter, left)
       if isTruthy(leftValue) {
-        evaluate(env, right)
+        evaluate(interpreter, right)
       } else {
         leftValue
       }
     }
 
   | ExprCall(callee, arguments) =>
-    let calleeValue = evaluate(env, callee)
+    let calleeValue = evaluate(interpreter, callee)
 
-    let argumentsValues = arguments->List.map(argument => evaluate(env, argument))
+    let argumentsValues = arguments->List.map(argument => evaluate(interpreter, argument))
 
     switch calleeValue {
     | VCallable(callable) =>
@@ -145,47 +151,47 @@ and evalConditional = (env, cond, thenBranch, elseBranch) =>
     evaluate(env, elseBranch)
   }
 
-let rec execute = (env: Env.t<'a>, stmt: Ast.stmt) =>
+let rec execute = (interpreter, stmt: Ast.stmt) =>
   switch stmt.stmtDesc {
   | StmtExpression(expr) =>
-    let _: Value.t = evaluate(env, expr)
+    let _: Value.t = evaluate(interpreter, expr)
 
   | StmtPrint(expr) =>
-    let value = evaluate(env, expr)
+    let value = evaluate(interpreter, expr)
     Js.log(Value.printValue(value))
 
   | StmtVar(name, maybeInitExpr) =>
     let value = switch maybeInitExpr {
-    | Some(initExpr) => evaluate(env, initExpr)
+    | Some(initExpr) => evaluate(interpreter, initExpr)
     | None => VNil
     }
 
-    Env.define(env, name, value)
+    Env.define(interpreter.env, name, value)
 
   | StmtBlock(statements) =>
-    let newEnv = Env.make(~enclosing=env, ())
-    executeBlock(newEnv, statements)
+    interpreter.env = Env.make(~enclosing=interpreter.env, ())
+    executeBlock(interpreter, statements)
 
   | StmtIf(condition, thenBranch, elseBranch) =>
-    let conditionValue = evaluate(env, condition)
+    let conditionValue = evaluate(interpreter, condition)
 
     if isTruthy(conditionValue) {
-      execute(env, thenBranch)
+      execute(interpreter, thenBranch)
     } else {
-      Option.forEach(elseBranch, execute(env, _))
+      Option.forEach(elseBranch, execute(interpreter, _))
     }
 
   | StmtWhile(condition, body) =>
-    let conditionValue = evaluate(env, condition)
+    let conditionValue = evaluate(interpreter, condition)
     if isTruthy(conditionValue) {
-      execute(env, body)
-      execute(env, stmt)
+      execute(interpreter, body)
+      execute(interpreter, stmt)
     }
   | StmtFunction(name, parameters, body) =>
     let callable = VCallable({
       toString: "<fn " ++ name ++ ">",
       arity: parameters->List.length,
-      closure: env,
+      closure: interpreter.env,
       call: (closure, arguments) => {
         let env = Env.make(~enclosing=closure, ())
         parameters->List.forEachWithIndex((i, parameter) =>
@@ -193,7 +199,7 @@ let rec execute = (env: Env.t<'a>, stmt: Ast.stmt) =>
         )
 
         let value = try {
-          executeBlock(env, body)
+          executeBlock(interpreter, body)
           VNil
         } catch {
         | Return(value) => value
@@ -203,20 +209,21 @@ let rec execute = (env: Env.t<'a>, stmt: Ast.stmt) =>
       },
     })
 
-    Env.define(env, name, callable)
+    Env.define(interpreter.env, name, callable)
   | StmtReturn(maybeExpr) =>
-    let value = maybeExpr->Option.mapWithDefault(VNil, evaluate(env, _))
+    let value = maybeExpr->Option.mapWithDefault(VNil, evaluate(interpreter, _))
 
     raise(Return(value))
   }
-and executeBlock = (env, statements) => {
-  List.forEach(statements, execute(env))
+and executeBlock = (interpreter: t, statements) => {
+  List.forEach(statements, execute(interpreter))
 }
 
 let interpret = (program: list<Ast.stmt>) => {
-  let env = global
+  let interpreter = make()
+  interpreter.env = global
 
-  switch List.forEach(program, execute(env)) {
+  switch List.forEach(program, execute(interpreter)) {
   | () => Ok()
   | exception EvalError(msg, loc) => Error(msg, loc)
   }
