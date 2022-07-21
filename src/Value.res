@@ -3,7 +3,7 @@ type rec t =
   | VNumber(float)
   | VBool(bool)
   | VNil
-  | VCallable({toString: string, closure: Env.t<t>, arity: int, call: (Env.t<t>, list<t>) => t})
+  | VFunction({toString: string, arity: int, call: list<t> => t})
 
 let printValue = value =>
   switch value {
@@ -11,5 +11,5 @@ let printValue = value =>
   | VNumber(f) => Float.toString(f)
   | VBool(b) => b ? "true" : "false"
   | VNil => "nil"
-  | VCallable({toString}) => toString
+  | VFunction({toString}) => toString
   }

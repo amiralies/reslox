@@ -41,7 +41,7 @@ and printLiteralValue = value =>
   | VNumber(number) => Float.toString(number)
   | VBool(b) => b ? "true" : "false"
   | VNil => "nil"
-  | VCallable(_) => "[Callable]"
+  | VFunction(_) => "[Function]"
   }
 and printUnaryOp = uop =>
   switch uop.uopDesc {

@@ -9,21 +9,19 @@ open Value
 type t = {mutable env: Env.t<Value.t>}
 
 let global = {
-  let globals = Env.make()
+  let globals = Env.empty
   globals->Env.define(
     "clock",
-    VCallable({
-      toString: "<native fn>",
+    VFunction({
       arity: 0,
-      closure: Env.make(),
-      call: (_, _) => VNumber((Js.Date.now() /. 1000.0)->Js.Math.floor_float),
+      toString: "<native fn>",
+      call: _ => VNumber((Js.Date.now() /. 1000.0)->Js.Math.floor_float),
     }),
   )
-  globals
 }
 
 let make = () => {
-  env: Env.make(),
+  env: Env.empty,
 }
 
 let isTruthy = value =>
@@ -44,7 +42,7 @@ let applyComparisonOrRaise = (opLoc, left, right, p) =>
   | _ => raise(EvalError("Operands should be numbers", opLoc))
   }
 
-let rec evaluate = (interpreter, expr) =>
+let rec evaluate = (interpreter: t, expr) =>
   switch expr.exprDesc {
   | ExprBinary(left, op, right) =>
     let leftValue = evaluate(interpreter, left)
@@ -68,7 +66,9 @@ let rec evaluate = (interpreter, expr) =>
   | ExprAssign(name, expr) =>
     let value = evaluate(interpreter, expr)
     switch Env.assign(interpreter.env, name, value) {
-    | Ok() => value
+    | Ok(newEnv) =>
+      interpreter.env = newEnv
+      value
     | Error() => raise(EvalError("Undefined variable '" ++ name ++ "'.", expr.exprLoc))
     }
   | ExprLogical(left, op, right) =>
@@ -95,9 +95,9 @@ let rec evaluate = (interpreter, expr) =>
     let argumentsValues = arguments->List.map(argument => evaluate(interpreter, argument))
 
     switch calleeValue {
-    | VCallable(callable) =>
+    | VFunction(callable) =>
       if callable.arity == List.length(argumentsValues) {
-        callable.call(callable.closure, argumentsValues)
+        callable.call(argumentsValues)
       } else {
         raise(
           EvalError(
@@ -137,21 +137,21 @@ and evalUnary = ({uopDesc, uopLoc}, right) =>
   | UopNegative =>
     switch right {
     | VNumber(number) => VNumber(-.number)
-    | VCallable(_) | VString(_) | VBool(_) | VNil =>
+    | VFunction(_) | VString(_) | VBool(_) | VNil =>
       raise(EvalError("Can't use unary '-' operator on non-number values", uopLoc))
     }
 
   | UopNot => VBool(!isTruthy(right))
   }
 
-and evalConditional = (env, cond, thenBranch, elseBranch) =>
+and evalConditional = (interpreter: t, cond, thenBranch, elseBranch) =>
   if isTruthy(cond) {
-    evaluate(env, thenBranch)
+    evaluate(interpreter, thenBranch)
   } else {
-    evaluate(env, elseBranch)
+    evaluate(interpreter, elseBranch)
   }
 
-let rec execute = (interpreter, stmt: Ast.stmt) =>
+let rec execute = (interpreter: t, stmt: Ast.stmt) =>
   switch stmt.stmtDesc {
   | StmtExpression(expr) =>
     let _: Value.t = evaluate(interpreter, expr)
@@ -166,11 +166,10 @@ let rec execute = (interpreter, stmt: Ast.stmt) =>
     | None => VNil
     }
 
-    Env.define(interpreter.env, name, value)
+    let newEnv = Env.define(interpreter.env, name, value)
+    interpreter.env = newEnv
 
-  | StmtBlock(statements) =>
-    interpreter.env = Env.make(~enclosing=interpreter.env, ())
-    executeBlock(interpreter, statements)
+  | StmtBlock(statements) => executeBlock(interpreter, statements)
 
   | StmtIf(condition, thenBranch, elseBranch) =>
     let conditionValue = evaluate(interpreter, condition)
@@ -188,35 +187,41 @@ let rec execute = (interpreter, stmt: Ast.stmt) =>
       execute(interpreter, stmt)
     }
   | StmtFunction(name, parameters, body) =>
-    let callable = VCallable({
-      toString: "<fn " ++ name ++ ">",
-      arity: parameters->List.length,
-      closure: interpreter.env,
-      call: (closure, arguments) => {
-        let env = Env.make(~enclosing=closure, ())
-        parameters->List.forEachWithIndex((i, parameter) =>
-          Env.define(env, parameter, arguments->List.getExn(i))
-        )
+    let callable = {
+      let closure = {env: interpreter.env}
+      let callable = VFunction({
+        toString: "<fn " ++ name ++ ">",
+        arity: parameters->List.length,
+        call: arguments => {
+          let closure = {env: closure.env}
+          parameters->List.forEachWithIndex((i, parameter) =>
+            closure.env = Env.define(closure.env, parameter, arguments->List.getExn(i))
+          )
 
-        let value = try {
-          executeBlock(interpreter, body)
-          VNil
-        } catch {
-        | Return(value) => value
-        }
+          let value = try {
+            executeBlock(closure, body)
+            VNil
+          } catch {
+          | Return(value) => value
+          }
 
-        value
-      },
-    })
+          value
+        },
+      })
+      closure.env = Env.define(closure.env, name, callable)
+      callable
+    }
 
-    Env.define(interpreter.env, name, callable)
+    interpreter.env = Env.define(interpreter.env, name, callable)
   | StmtReturn(maybeExpr) =>
     let value = maybeExpr->Option.mapWithDefault(VNil, evaluate(interpreter, _))
 
     raise(Return(value))
   }
 and executeBlock = (interpreter: t, statements) => {
+  interpreter.env = Env.enterBlock(interpreter.env)
   List.forEach(statements, execute(interpreter))
+  interpreter.env = Env.exitBlock(interpreter.env)
 }
 
 let interpret = (program: list<Ast.stmt>) => {
