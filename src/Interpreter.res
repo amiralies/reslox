@@ -176,12 +176,12 @@ let rec execute = (envContainer: envContainer, stmt: Ast.stmt) =>
     }
   | StmtFunction(name, parameters, body) =>
     let callable = {
-      let closure = {env: envContainer.env}
+      let closureEnvContainer = {env: envContainer.env}
       let callable = VFunction({
         toString: "<fn " ++ name ++ ">",
         arity: parameters->List.length,
         call: arguments => {
-          let closure = {env: closure.env}
+          let closure = {env: closureEnvContainer.env}
           parameters->List.forEachWithIndex((i, parameter) =>
             closure.env = Env.define(closure.env, parameter, arguments->List.getExn(i))
           )
@@ -196,7 +196,7 @@ let rec execute = (envContainer: envContainer, stmt: Ast.stmt) =>
           value
         },
       })
-      closure.env = Env.define(closure.env, name, callable)
+      closureEnvContainer.env = Env.define(closureEnvContainer.env, name, callable)
       callable
     }
 
