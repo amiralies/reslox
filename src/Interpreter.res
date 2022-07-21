@@ -6,21 +6,9 @@ open Ast
 
 open Value
 
-type t = {mutable env: Env.t<Value.t>}
+type envContainer = {mutable env: Env.t<Value.t>}
 
-let global = {
-  let globals = Env.empty
-  globals->Env.define(
-    "clock",
-    VFunction({
-      arity: 0,
-      toString: "<native fn>",
-      call: _ => VNumber((Js.Date.now() /. 1000.0)->Js.Math.floor_float),
-    }),
-  )
-}
-
-let make = () => {
+let makeEnvContainer = () => {
   env: Env.empty,
 }
 
@@ -42,57 +30,57 @@ let applyComparisonOrRaise = (opLoc, left, right, p) =>
   | _ => raise(EvalError("Operands should be numbers", opLoc))
   }
 
-let rec evaluate = (interpreter: t, expr) =>
+let rec evaluate = (envContainer: envContainer, expr) =>
   switch expr.exprDesc {
   | ExprBinary(left, op, right) =>
-    let leftValue = evaluate(interpreter, left)
-    let rightValue = evaluate(interpreter, right)
+    let leftValue = evaluate(envContainer, left)
+    let rightValue = evaluate(envContainer, right)
     evalBinary(leftValue, op, rightValue)
-  | ExprGrouping(expr) => evaluate(interpreter, expr)
+  | ExprGrouping(expr) => evaluate(envContainer, expr)
   | ExprLiteral(value) => value
   | ExprUnary(op, right) =>
-    let rightValue = evaluate(interpreter, right)
+    let rightValue = evaluate(envContainer, right)
 
     evalUnary(op, rightValue)
   | ExprConditional(cond, thenBranch, elseBranch) =>
-    let condValue = evaluate(interpreter, cond)
+    let condValue = evaluate(envContainer, cond)
 
-    evalConditional(interpreter, condValue, thenBranch, elseBranch)
+    evalConditional(envContainer, condValue, thenBranch, elseBranch)
   | ExprVariable(name) =>
-    switch Env.get(interpreter.env, name) {
+    switch Env.get(envContainer.env, name) {
     | Some(value) => value
     | None => raise(EvalError("Undefined variable '" ++ name ++ "'.", expr.exprLoc))
     }
   | ExprAssign(name, expr) =>
-    let value = evaluate(interpreter, expr)
-    switch Env.assign(interpreter.env, name, value) {
+    let value = evaluate(envContainer, expr)
+    switch Env.assign(envContainer.env, name, value) {
     | Ok(newEnv) =>
-      interpreter.env = newEnv
+      envContainer.env = newEnv
       value
     | Error() => raise(EvalError("Undefined variable '" ++ name ++ "'.", expr.exprLoc))
     }
   | ExprLogical(left, op, right) =>
     switch op.lopDesc {
     | LopOr =>
-      let leftValue = evaluate(interpreter, left)
+      let leftValue = evaluate(envContainer, left)
       if isTruthy(leftValue) {
         leftValue
       } else {
-        evaluate(interpreter, right)
+        evaluate(envContainer, right)
       }
     | LopAnd =>
-      let leftValue = evaluate(interpreter, left)
+      let leftValue = evaluate(envContainer, left)
       if isTruthy(leftValue) {
-        evaluate(interpreter, right)
+        evaluate(envContainer, right)
       } else {
         leftValue
       }
     }
 
   | ExprCall(callee, arguments) =>
-    let calleeValue = evaluate(interpreter, callee)
+    let calleeValue = evaluate(envContainer, callee)
 
-    let argumentsValues = arguments->List.map(argument => evaluate(interpreter, argument))
+    let argumentsValues = arguments->List.map(argument => evaluate(envContainer, argument))
 
     switch calleeValue {
     | VFunction(callable) =>
@@ -144,51 +132,51 @@ and evalUnary = ({uopDesc, uopLoc}, right) =>
   | UopNot => VBool(!isTruthy(right))
   }
 
-and evalConditional = (interpreter: t, cond, thenBranch, elseBranch) =>
+and evalConditional = (envContainer: envContainer, cond, thenBranch, elseBranch) =>
   if isTruthy(cond) {
-    evaluate(interpreter, thenBranch)
+    evaluate(envContainer, thenBranch)
   } else {
-    evaluate(interpreter, elseBranch)
+    evaluate(envContainer, elseBranch)
   }
 
-let rec execute = (interpreter: t, stmt: Ast.stmt) =>
+let rec execute = (envContainer: envContainer, stmt: Ast.stmt) =>
   switch stmt.stmtDesc {
   | StmtExpression(expr) =>
-    let _: Value.t = evaluate(interpreter, expr)
+    let _: Value.t = evaluate(envContainer, expr)
 
   | StmtPrint(expr) =>
-    let value = evaluate(interpreter, expr)
+    let value = evaluate(envContainer, expr)
     Js.log(Value.printValue(value))
 
   | StmtVar(name, maybeInitExpr) =>
     let value = switch maybeInitExpr {
-    | Some(initExpr) => evaluate(interpreter, initExpr)
+    | Some(initExpr) => evaluate(envContainer, initExpr)
     | None => VNil
     }
 
-    let newEnv = Env.define(interpreter.env, name, value)
-    interpreter.env = newEnv
+    let newEnv = Env.define(envContainer.env, name, value)
+    envContainer.env = newEnv
 
-  | StmtBlock(statements) => executeBlock(interpreter, statements)
+  | StmtBlock(statements) => executeBlock(envContainer, statements)
 
   | StmtIf(condition, thenBranch, elseBranch) =>
-    let conditionValue = evaluate(interpreter, condition)
+    let conditionValue = evaluate(envContainer, condition)
 
     if isTruthy(conditionValue) {
-      execute(interpreter, thenBranch)
+      execute(envContainer, thenBranch)
     } else {
-      Option.forEach(elseBranch, execute(interpreter, _))
+      Option.forEach(elseBranch, execute(envContainer, _))
     }
 
   | StmtWhile(condition, body) =>
-    let conditionValue = evaluate(interpreter, condition)
+    let conditionValue = evaluate(envContainer, condition)
     if isTruthy(conditionValue) {
-      execute(interpreter, body)
-      execute(interpreter, stmt)
+      execute(envContainer, body)
+      execute(envContainer, stmt)
     }
   | StmtFunction(name, parameters, body) =>
     let callable = {
-      let closure = {env: interpreter.env}
+      let closure = {env: envContainer.env}
       let callable = VFunction({
         toString: "<fn " ++ name ++ ">",
         arity: parameters->List.length,
@@ -212,23 +200,25 @@ let rec execute = (interpreter: t, stmt: Ast.stmt) =>
       callable
     }
 
-    interpreter.env = Env.define(interpreter.env, name, callable)
+    envContainer.env = Env.define(envContainer.env, name, callable)
   | StmtReturn(maybeExpr) =>
-    let value = maybeExpr->Option.mapWithDefault(VNil, evaluate(interpreter, _))
+    let value = maybeExpr->Option.mapWithDefault(VNil, evaluate(envContainer, _))
 
     raise(Return(value))
   }
-and executeBlock = (interpreter: t, statements) => {
-  interpreter.env = Env.enterBlock(interpreter.env)
-  List.forEach(statements, execute(interpreter))
-  interpreter.env = Env.exitBlock(interpreter.env)
+and executeBlock = (envContainer: envContainer, statements) => {
+  envContainer.env = Env.enterBlock(envContainer.env)
+  List.forEach(statements, execute(envContainer))
+  envContainer.env = Env.exitBlock(envContainer.env)
 }
 
 let interpret = (program: list<Ast.stmt>) => {
-  let interpreter = make()
-  interpreter.env = global
+  let envContainer = makeEnvContainer()
+  Globals.globals->List.forEach(((name, value)) =>
+    envContainer.env = Env.define(envContainer.env, name, value)
+  )
 
-  switch List.forEach(program, execute(interpreter)) {
+  switch List.forEach(program, execute(envContainer)) {
   | () => Ok()
   | exception EvalError(msg, loc) => Error(msg, loc)
   }
