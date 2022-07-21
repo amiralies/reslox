@@ -55,6 +55,12 @@ and stmtDesc =
   | StmtWhile(expr, stmt)
   | StmtFunction(string, list<string>, list<stmt>)
   | StmtReturn(option<expr>)
+  | StmtClass(string, list<method>)
+and method = {
+  name: string,
+  args: list<string>,
+  body: list<stmt>,
+}
 
 module Helper = {
   open Location
