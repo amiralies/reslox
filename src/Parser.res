@@ -375,7 +375,7 @@ let synchronize = parser => {
 let rec declaration = parser => {
   try Ok(
     switch peek(parser).val {
-    | Fun => function("function", parser)
+    | Fun => function(parser)
     | Var => varDeclaration(parser)
     | _ => statement(parser)
     },
@@ -385,7 +385,7 @@ let rec declaration = parser => {
     Error(msg, loc)
   }
 }
-and function = (kind, parser) => {
+and function = parser => {
   let funLoc = peek(parser).loc
   advance(parser) // Consume fun token
 
@@ -396,14 +396,10 @@ and function = (kind, parser) => {
       | Identifier(name) => Some(name)
       | _ => None
       },
-    "Expect " ++ kind ++ " name.",
+    "Expect function name.",
   )
 
-  let _ = consumeIfOrRaise(
-    parser,
-    peek => peek == LeftParen,
-    "Expect '(' after " ++ kind ++ " name.",
-  )
+  let _ = consumeIfOrRaise(parser, peek => peek == LeftParen, "Expect '(' after function name.")
 
   let parameters = {
     let rec loop = (acc, parser) => {
@@ -414,7 +410,7 @@ and function = (kind, parser) => {
           | Identifier(name) => Some(name)
           | _ => None
           },
-        "Expect " ++ kind ++ " name.",
+        "Expect function name.",
       )
 
       if peek(parser).val == Comma {
@@ -435,7 +431,7 @@ and function = (kind, parser) => {
   }
 
   if peek(parser).val != LeftBrace {
-    raise(ParseError("Expect '{' before " ++ kind ++ " body.", peek(parser).loc))
+    raise(ParseError("Expect '{' before function body.", peek(parser).loc))
   } else {
     let (bodyLoc, bodyItems) = blockStatement(parser)
 
