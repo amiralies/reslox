@@ -94,6 +94,7 @@ module Helper = {
       mk(~loc, ExprLogical(left, lop, right))
     }
     let call = (~loc, callee, args) => mk(~loc, ExprCall(callee, args))
+    let get = (~loc, left, name) => mk(~loc, ExprGet(left, name))
 
     let bop = (~loc, desc) => {
       bopDesc: desc,

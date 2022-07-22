@@ -262,10 +262,32 @@ and call = parser => {
 
       loop(callExpr, parser)
 
+    | Dot =>
+      let (prop, propLoc) = parseProp(parser)
+
+      let loc = {start: acc.exprLoc.start, end: propLoc.end}
+      let getExpr = Ast.Helper.Expr.get(~loc, acc, prop)
+
+      loop(getExpr, parser)
     | _ => acc
     }
 
   loop(expr, parser)
+}
+and parseProp = parser => {
+  advance(parser) // consume dot
+
+  let {val: prop, loc} = consumeMapOrRaise(
+    parser,
+    token =>
+      switch token {
+      | Identifier(name) => Some(name)
+      | _ => None
+      },
+    "Expect property name after '.'.",
+  )
+
+  (prop, loc)
 }
 and parseArgs = parser => {
   advance(parser) // consume left paren
