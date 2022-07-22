@@ -12,6 +12,7 @@ and exprDesc =
   | ExprAssign(string, expr)
   | ExprLogical(expr, lop, expr)
   | ExprCall(expr, list<expr>)
+  | ExprGet(expr, string)
 and bop = {
   bopDesc: bopDesc,
   bopLoc: Location.t,

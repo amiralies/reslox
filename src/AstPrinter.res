@@ -10,6 +10,7 @@ let rec print = expr =>
   | ExprAssign(name, expr) => parenthesize("= " ++ name, list{expr})
   | ExprLogical(left, op, right) => parenthesize(printLogicalOp(op), list{left, right})
   | ExprCall(callee, args) => parenthesize(print(callee), args)
+  | ExprGet(left, prop) => `(get ${print(left)} ${prop})`
   }
 and parenthesize = (name: string, exprs: list<Ast.expr>) => {
   let exprsJoined = exprs->List.map(print)->String.concat(" ", _)
