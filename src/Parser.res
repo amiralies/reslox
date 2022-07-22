@@ -375,6 +375,7 @@ let synchronize = parser => {
 let rec declaration = parser => {
   try Ok(
     switch peek(parser).val {
+    | Class => class(parser)
     | Fun => function(parser)
     | Var => varDeclaration(parser)
     | _ => statement(parser)
@@ -383,6 +384,93 @@ let rec declaration = parser => {
   | ParseError(msg, loc) =>
     synchronize(parser)
     Error(msg, loc)
+  }
+}
+and class = parser => {
+  let classLoc = peek(parser).loc
+  advance(parser) // Consume class token
+
+  let {val: name} = consumeMapOrRaise(
+    parser,
+    token =>
+      switch token {
+      | Identifier(name) => Some(name)
+      | _ => None
+      },
+    "Expect class name.",
+  )
+
+  let _ = consumeIfOrRaise(parser, peek => peek == LeftBrace, "Expect '{' after class name.")
+
+  let methods = {
+    let rec loop = acc =>
+      if peek(parser).val == RightBrace || isAtEnd(parser) {
+        List.reverse(acc)
+      } else {
+        let method = method(parser)
+        loop(list{method, ...acc})
+      }
+    loop(list{})
+  }
+
+  let {loc: rbraceLoc} = consumeIfOrRaise(
+    parser,
+    peek => peek == RightBrace,
+    "Expect '}' after class declaration.",
+  )
+
+  let loc = {start: classLoc.start, end: rbraceLoc.end}
+
+  Ast.Helper.Stmt.class(~loc, name, methods)
+}
+and method = parser => {
+  let {val: name} = consumeMapOrRaise(
+    parser,
+    token =>
+      switch token {
+      | Identifier(name) => Some(name)
+      | _ => None
+      },
+    "Expect method name.",
+  )
+
+  let _ = consumeIfOrRaise(parser, peek => peek == LeftParen, "Expect '(' after method name.")
+
+  let parameters = {
+    let rec loop = (acc, parser) => {
+      let {val: paramName} = consumeMapOrRaise(
+        parser,
+        token =>
+          switch token {
+          | Identifier(name) => Some(name)
+          | _ => None
+          },
+        "Expect param name.",
+      )
+
+      if peek(parser).val == Comma {
+        advance(parser)
+        loop(list{paramName, ...acc}, parser)
+      } else {
+        let _ = consumeIfOrRaise(parser, t => t === RightParen, "Expect ')' after parameters.")
+        List.reverse(list{paramName, ...acc})
+      }
+    }
+
+    if peek(parser).val == RightParen {
+      advance(parser)
+      list{}
+    } else {
+      loop(list{}, parser)
+    }
+  }
+
+  if peek(parser).val != LeftBrace {
+    raise(ParseError("Expect '{' before method body.", peek(parser).loc))
+  } else {
+    let (_, body) = blockStatement(parser)
+
+    {name: name, parameters: parameters, body: body}
   }
 }
 and function = parser => {
@@ -410,7 +498,7 @@ and function = parser => {
           | Identifier(name) => Some(name)
           | _ => None
           },
-        "Expect function name.",
+        "Expect param name.",
       )
 
       if peek(parser).val == Comma {

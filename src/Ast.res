@@ -58,7 +58,7 @@ and stmtDesc =
   | StmtClass(string, list<method>)
 and method = {
   name: string,
-  args: list<string>,
+  parameters: list<string>,
   body: list<stmt>,
 }
 
@@ -125,5 +125,6 @@ module Helper = {
     let while_ = (~loc, condition, body) => mk(~loc, StmtWhile(condition, body))
     let function = (~loc, name, parameters, body) => mk(~loc, StmtFunction(name, parameters, body))
     let return = (~loc, maybeExpr) => mk(~loc, StmtReturn(maybeExpr))
+    let class = (~loc, name, methods) => mk(~loc, StmtClass(name, methods))
   }
 }
