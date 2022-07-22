@@ -98,9 +98,22 @@ let rec evaluate = (envContainer: envContainer, expr) =>
         )
       }
 
-    | VClass(class) => VInstance({class: class})
+    | VClass(class) => VInstance({class: class, fields: MutableMap.String.make()})
     | VNil | VString(_) | VNumber(_) | VBool(_) | VInstance(_) =>
       raise(EvalError("Can only call functions and classes.", callee.exprLoc))
+    }
+  | ExprGet(left, propName) =>
+    let maybeObject = evaluate(envContainer, left)
+
+    let instance = switch maybeObject {
+    | VInstance(instance) => instance
+    | _ => raise(EvalError("Only instances have properties", left.exprLoc))
+    }
+
+    switch MutableMap.String.get(instance.fields, propName) {
+    | None => raise(EvalError(`Undefined property '${propName}'.`, left.exprLoc))
+
+    | Some(field) => field
     }
   }
 

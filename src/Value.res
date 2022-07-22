@@ -8,7 +8,7 @@ type rec t =
   | VInstance(instance)
 and function = {name: string, arity: int, call: list<t> => t}
 and class = {name: string}
-and instance = {class: class}
+and instance = {class: class, fields: MutableMap.String.t<t>}
 
 let printValue = value =>
   switch value {
