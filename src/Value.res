@@ -3,7 +3,12 @@ type rec t =
   | VNumber(float)
   | VBool(bool)
   | VNil
-  | VFunction({toString: string, arity: int, call: list<t> => t})
+  | VFunction(function)
+  | VClass(class)
+  | VInstance(instance)
+and function = {name: string, arity: int, call: list<t> => t}
+and class = {name: string}
+and instance = {class: class}
 
 let printValue = value =>
   switch value {
@@ -11,5 +16,7 @@ let printValue = value =>
   | VNumber(f) => Float.toString(f)
   | VBool(b) => b ? "true" : "false"
   | VNil => "nil"
-  | VFunction({toString}) => toString
+  | VFunction({name}) => `[fn: ${name}]`
+  | VClass({name}) => `[class: ${name}]`
+  | VInstance({class}) => `[instance: of class ${class.name}]`
   }

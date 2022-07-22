@@ -4,7 +4,7 @@ exception Return(Value.t)
 
 open Ast
 
-open Value
+open! Value
 
 type envContainer = {mutable env: Env.t<Value.t>}
 
@@ -125,7 +125,7 @@ and evalUnary = ({uopDesc, uopLoc}, right) =>
   | UopNegative =>
     switch right {
     | VNumber(number) => VNumber(-.number)
-    | VFunction(_) | VString(_) | VBool(_) | VNil =>
+    | VInstance(_) | VClass(_) | VFunction(_) | VString(_) | VBool(_) | VNil =>
       raise(EvalError("Can't use unary '-' operator on non-number values", uopLoc))
     }
 
@@ -178,7 +178,7 @@ let rec execute = (envContainer: envContainer, stmt: Ast.stmt) =>
     let callable = {
       let closureEnvContainer = {env: envContainer.env}
       let callable = VFunction({
-        toString: "<fn " ++ name ++ ">",
+        name: name,
         arity: parameters->List.length,
         call: arguments => {
           let closure = {env: closureEnvContainer.env}
@@ -205,6 +205,10 @@ let rec execute = (envContainer: envContainer, stmt: Ast.stmt) =>
     let value = maybeExpr->Option.mapWithDefault(VNil, evaluate(envContainer, _))
 
     raise(Return(value))
+  | StmtClass(name, _methods) =>
+    let class = VClass({name: name})
+
+    envContainer.env = Env.define(envContainer.env, name, class)
   }
 and executeBlock = (envContainer: envContainer, statements) => {
   envContainer.env = Env.enterBlock(envContainer.env)
