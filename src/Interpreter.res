@@ -97,7 +97,10 @@ let rec evaluate = (envContainer: envContainer, expr) =>
           ),
         )
       }
-    | _ => raise(EvalError("Can only call functions and classes.", callee.exprLoc))
+
+    | VClass(class) => VInstance({class: class})
+    | VNil | VString(_) | VNumber(_) | VBool(_) | VInstance(_) =>
+      raise(EvalError("Can only call functions and classes.", callee.exprLoc))
     }
   }
 
