@@ -54,6 +54,11 @@ and assignment = parser => {
       let loc = {start: expr.exprLoc.start, end: rhsExpr.exprLoc.end}
 
       Ast.Helper.Expr.assign(~loc, name, rhsExpr)
+    | ExprGet(object, name) =>
+      let rhsExpr = assignment(parser)
+      let loc = {start: expr.exprLoc.start, end: rhsExpr.exprLoc.end}
+
+      Ast.Helper.Expr.set(~loc, object, name, rhsExpr)
     | _ => raise(ParseError("Invalid assignment target.", expr.exprLoc))
     }
   | _ => expr
