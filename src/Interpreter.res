@@ -115,6 +115,18 @@ let rec evaluate = (envContainer: envContainer, expr) =>
 
     | Some(field) => field
     }
+
+  | ExprSet(object, propName, value) =>
+    let maybeObject = evaluate(envContainer, object)
+
+    let instance = switch maybeObject {
+    | VInstance(instance) => instance
+    | _ => raise(EvalError("Only instances have fields", object.exprLoc))
+    }
+
+    let value = evaluate(envContainer, value)
+    instance.fields->MutableMap.String.set(propName, value)
+    value
   }
 
 and evalBinary = (left, {bopDesc, bopLoc}, right) =>
