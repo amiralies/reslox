@@ -111,9 +111,13 @@ let rec evaluate = (envContainer: envContainer, expr) =>
     }
 
     switch MutableMap.String.get(instance.fields, propName) {
-    | None => raise(EvalError(`Undefined property '${propName}'.`, object.exprLoc))
-
     | Some(field) => field
+
+    | None =>
+      switch Map.String.get(instance.class.methods, propName) {
+      | Some(method) => VFunction(method.invoke(instance))
+      | None => raise(EvalError(`Undefined property '${propName}'.`, object.exprLoc))
+      }
     }
 
   | ExprSet(object, propName, value) =>
@@ -127,6 +131,11 @@ let rec evaluate = (envContainer: envContainer, expr) =>
     let value = evaluate(envContainer, value)
     instance.fields->MutableMap.String.set(propName, value)
     value
+  | ExprThis =>
+    switch Env.get(envContainer.env, "this") {
+    | Some(value) => value
+    | None => raise(EvalError("Cann't use this outside of a method", expr.exprLoc)) // TODO
+    }
   }
 
 and evalBinary = (left, {bopDesc, bopLoc}, right) =>
@@ -233,8 +242,46 @@ let rec execute = (envContainer: envContainer, stmt: Ast.stmt) =>
     let value = maybeExpr->Option.mapWithDefault(VNil, evaluate(envContainer, _))
 
     raise(Return(value))
-  | StmtClass(name, _methods) =>
-    let class = VClass({name: name})
+  | StmtClass(name, methodDecls) =>
+    // TODO Refactor
+    let methods = methodDecls->List.map(method => {
+      let closureEnvContainer = {env: envContainer.env}
+      let invoke = instance => {
+        let call = arguments => {
+          let closure = {env: closureEnvContainer.env}
+          closure.env = Env.define(closure.env, "this", VInstance(instance))
+
+          method.parameters->List.forEachWithIndex((i, parameter) =>
+            closure.env = Env.define(closure.env, parameter, arguments->List.getExn(i))
+          )
+
+          let value = try {
+            executeBlock(closure, method.body)
+            VNil
+          } catch {
+          | Return(value) => value
+          }
+
+          value
+        }
+        {name: method.name, call: call, arity: method.parameters->List.length}
+      }
+
+      ({name: method.name, invoke: invoke}, closureEnvContainer)
+    })
+
+    let closures = List.map(methods, snd)
+    let methods =
+      List.map(methods, fst)
+      ->List.map(method => (method.name, method))
+      ->List.toArray
+      ->Map.String.fromArray
+
+    let class = VClass({name: name, methods: methods})
+
+    closures->List.forEach(closure => {
+      closure.env = Env.define(closure.env, name, class)
+    })
 
     envContainer.env = Env.define(envContainer.env, name, class)
   }

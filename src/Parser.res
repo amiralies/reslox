@@ -347,6 +347,11 @@ and primary = parser =>
     advance(parser)
     Ast.Helper.Expr.literal(~loc, VNil)
 
+  | This =>
+    let {loc} = peek(parser)
+    advance(parser)
+    Ast.Helper.Expr.this(~loc)
+
   | Identifier(name) =>
     let {loc} = peek(parser)
     advance(parser)

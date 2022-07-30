@@ -14,6 +14,7 @@ and exprDesc =
   | ExprCall(expr, list<expr>)
   | ExprGet(expr, string)
   | ExprSet(expr, string, expr)
+  | ExprThis
 and bop = {
   bopDesc: bopDesc,
   bopLoc: Location.t,
@@ -97,6 +98,7 @@ module Helper = {
     let call = (~loc, callee, args) => mk(~loc, ExprCall(callee, args))
     let get = (~loc, left, name) => mk(~loc, ExprGet(left, name))
     let set = (~loc, object, name, value) => mk(~loc, ExprSet(object, name, value))
+    let this = (~loc) => mk(~loc, ExprThis)
 
     let bop = (~loc, desc) => {
       bopDesc: desc,

@@ -3,12 +3,13 @@ type rec t =
   | VNumber(float)
   | VBool(bool)
   | VNil
-  | VFunction(function)
+  | VFunction(callable)
   | VClass(class)
   | VInstance(instance)
-and function = {name: string, arity: int, call: list<t> => t}
-and class = {name: string}
+and callable = {name: string, arity: int, call: list<t> => t}
+and class = {name: string, methods: Map.String.t<method>}
 and instance = {class: class, fields: MutableMap.String.t<t>}
+and method = {name: string, invoke: instance => callable}
 
 let printValue = value =>
   switch value {
