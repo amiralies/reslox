@@ -98,7 +98,34 @@ let rec evaluate = (envContainer: envContainer, expr) =>
         )
       }
 
-    | VClass(class) => VInstance({class: class, fields: MutableMap.String.make()})
+    | VClass(class) =>
+      switch class.methods->Map.String.get("init") {
+      | None =>
+        if List.length(argumentsValues) > 0 {
+          raise(EvalError(class.name ++ "'s init takes no arguments'", callee.exprLoc))
+        }
+        let instance = {class: class, fields: MutableMap.String.make()}
+        VInstance(instance)
+
+      | Some(init) =>
+        let instance = {class: class, fields: MutableMap.String.make()}
+        let initCallable = init.bind(instance)
+
+        if initCallable.arity != List.length(argumentsValues) {
+          raise(
+            EvalError(
+              `${class.name}'s init takes ${initCallable.arity->Int.toString} arguments but you have provided ${List.length(
+                  argumentsValues,
+                )->Int.toString}`,
+              callee.exprLoc,
+            ),
+          )
+        }
+
+        let _: Value.t = initCallable.call(argumentsValues)
+        VInstance(instance)
+      }
+
     | VNil | VString(_) | VNumber(_) | VBool(_) | VInstance(_) =>
       raise(EvalError("Can only call functions and classes.", callee.exprLoc))
     }
@@ -115,7 +142,7 @@ let rec evaluate = (envContainer: envContainer, expr) =>
 
     | None =>
       switch Map.String.get(instance.class.methods, propName) {
-      | Some(method) => VFunction(method.invoke(instance))
+      | Some(method) => VFunction(method.bind(instance))
       | None => raise(EvalError(`Undefined property '${propName}'.`, object.exprLoc))
       }
     }
@@ -245,8 +272,9 @@ let rec execute = (envContainer: envContainer, stmt: Ast.stmt) =>
   | StmtClass(name, methodDecls) =>
     // TODO Refactor
     let methods = methodDecls->List.map(method => {
+      let isInit = method.name == "init"
       let closureEnvContainer = {env: envContainer.env}
-      let invoke = instance => {
+      let bind = instance => {
         let call = arguments => {
           let closure = {env: closureEnvContainer.env}
           closure.env = Env.define(closure.env, "this", VInstance(instance))
@@ -262,12 +290,14 @@ let rec execute = (envContainer: envContainer, stmt: Ast.stmt) =>
           | Return(value) => value
           }
 
+          let value = isInit ? VInstance(instance) : value
+
           value
         }
         {name: method.name, call: call, arity: method.parameters->List.length}
       }
 
-      ({name: method.name, invoke: invoke}, closureEnvContainer)
+      ({name: method.name, bind: bind}, closureEnvContainer)
     })
 
     let closures = List.map(methods, snd)
