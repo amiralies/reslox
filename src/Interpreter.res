@@ -12,6 +12,13 @@ let makeEnvContainer = () => {
   env: Env.empty,
 }
 
+let rec findMethod = (class, methodName) =>
+  switch (Map.String.get(class.methods, methodName), class.maybeSuperClass) {
+  | (Some(method), _) => Some(method)
+  | (None, Some(superclass)) => findMethod(superclass, methodName)
+  | (None, None) => None
+  }
+
 let isTruthy = value =>
   switch value {
   | VNil | VBool(false) => false
@@ -141,7 +148,7 @@ let rec evaluate = (envContainer: envContainer, expr) =>
     | Some(field) => field
 
     | None =>
-      switch Map.String.get(instance.class.methods, propName) {
+      switch findMethod(instance.class, propName) {
       | Some(method) => VFunction(method.bind(instance))
       | None => raise(EvalError(`Undefined property '${propName}'.`, object.exprLoc))
       }
@@ -269,8 +276,20 @@ let rec execute = (envContainer: envContainer, stmt: Ast.stmt) =>
     let value = maybeExpr->Option.mapWithDefault(VNil, evaluate(envContainer, _))
 
     raise(Return(value))
-  | StmtClass(name, methodDecls) =>
+  | StmtClass(name, maybeSuperClassName, methodDecls) =>
     // TODO Refactor
+
+    let maybeSuperClassValue =
+      maybeSuperClassName->Option.flatMap(superClassName =>
+        Env.get(envContainer.env, superClassName)
+      )
+
+    let maybeSuperClass = switch maybeSuperClassValue {
+    | None => None
+    | Some(VClass(class)) => Some(class)
+    | Some(_) => raise(EvalError("Superclass must be a class.", stmt.stmtLoc))
+    }
+
     let methods = methodDecls->List.map(method => {
       let isInit = method.name == "init"
       let closureEnvContainer = {env: envContainer.env}
@@ -307,7 +326,7 @@ let rec execute = (envContainer: envContainer, stmt: Ast.stmt) =>
       ->List.toArray
       ->Map.String.fromArray
 
-    let class = VClass({name: name, methods: methods})
+    let class = VClass({name: name, maybeSuperClass: maybeSuperClass, methods: methods})
 
     closures->List.forEach(closure => {
       closure.env = Env.define(closure.env, name, class)

@@ -432,6 +432,23 @@ and class = parser => {
     "Expect class name.",
   )
 
+  let maybeSuperClass = switch peek(parser).val {
+  | Less =>
+    advance(parser)
+    let {val: superClassName} = consumeMapOrRaise(
+      parser,
+      token =>
+        switch token {
+        | Identifier(name) => Some(name)
+        | _ => None
+        },
+      "Expect superclass name.",
+    )
+
+    Some(superClassName)
+  | _ => None
+  }
+
   let _ = consumeIfOrRaise(parser, peek => peek == LeftBrace, "Expect '{' after class name.")
 
   let methods = {
@@ -453,7 +470,7 @@ and class = parser => {
 
   let loc = {start: classLoc.start, end: rbraceLoc.end}
 
-  Ast.Helper.Stmt.class(~loc, name, methods)
+  Ast.Helper.Stmt.class(~loc, name, maybeSuperClass, methods)
 }
 and method = parser => {
   let {val: name} = consumeMapOrRaise(

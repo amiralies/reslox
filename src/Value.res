@@ -7,7 +7,7 @@ type rec t =
   | VClass(class)
   | VInstance(instance)
 and callable = {name: string, arity: int, call: list<t> => t}
-and class = {name: string, methods: Map.String.t<method>}
+and class = {name: string, maybeSuperClass: option<class>, methods: Map.String.t<method>}
 and instance = {class: class, fields: MutableMap.String.t<t>}
 and method = {name: string, bind: instance => callable}
 
