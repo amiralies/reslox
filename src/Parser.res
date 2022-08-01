@@ -347,6 +347,24 @@ and primary = parser =>
     advance(parser)
     Ast.Helper.Expr.literal(~loc, VNil)
 
+  | Super =>
+    let {loc: superLoc} = peek(parser)
+    advance(parser)
+    let _ = consumeIfOrRaise(parser, peek => peek == Dot, "Expect '.' after 'super'.")
+
+    let {val: methodName, loc: methodLoc} = consumeMapOrRaise(
+      parser,
+      token =>
+        switch token {
+        | Identifier(name) => Some(name)
+        | _ => None
+        },
+      "Expect superclass method name.",
+    )
+
+    let loc = {start: superLoc.start, end: methodLoc.end}
+    Ast.Helper.Expr.super(~loc, methodName)
+
   | This =>
     let {loc} = peek(parser)
     advance(parser)

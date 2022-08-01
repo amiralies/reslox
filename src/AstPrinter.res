@@ -13,6 +13,7 @@ let rec print = expr =>
   | ExprGet(left, prop) => `(get ${print(left)} ${prop})`
   | ExprSet(object, prop, value) => `(set ${print(object)} ${prop} ${print(value)})`
   | ExprThis => "this"
+  | ExprSuper(methodName) => `(super ${methodName})`
   }
 and parenthesize = (name: string, exprs: list<Ast.expr>) => {
   let exprsJoined = exprs->List.map(print)->String.concat(" ", _)
