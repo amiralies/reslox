@@ -170,6 +170,23 @@ let rec evaluate = (envContainer: envContainer, expr) =>
     | Some(value) => value
     | None => raise(EvalError("Cann't use this outside of a method", expr.exprLoc)) // TODO
     }
+
+  | ExprSuper(methodName) =>
+    switch Env.get(envContainer.env, "super") {
+    | Some(VClass(superclass)) =>
+      switch superclass->findMethod(methodName) {
+      | None => raise(EvalError(`Undefind method '${methodName}'.`, expr.exprLoc)) // TODO
+      | Some(method) =>
+        let this = switch Env.get(envContainer.env, "this") {
+        | Some(VInstance(instance)) => instance
+        | None | Some(_) => raise(Failure("Internal error"))
+        }
+
+        VFunction(method.bind(this))
+      }
+    | Some(_) => raise(Failure("Internal error super cannot be anything other VClass"))
+    | None => raise(EvalError("no super allowed here or class is not folan", expr.exprLoc)) // TODO
+    }
   }
 
 and evalBinary = (left, {bopDesc, bopLoc}, right) =>
@@ -290,9 +307,15 @@ let rec execute = (envContainer: envContainer, stmt: Ast.stmt) =>
     | Some(_) => raise(EvalError("Superclass must be a class.", stmt.stmtLoc))
     }
 
+    let closureEnvContainer = {env: envContainer.env}
+    switch maybeSuperClass {
+    | None => ()
+    | Some(superClass) =>
+      closureEnvContainer.env = Env.define(closureEnvContainer.env, "super", VClass(superClass))
+    }
+
     let methods = methodDecls->List.map(method => {
       let isInit = method.name == "init"
-      let closureEnvContainer = {env: envContainer.env}
       let bind = instance => {
         let call = arguments => {
           let closure = {env: closureEnvContainer.env}
