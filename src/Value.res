@@ -18,6 +18,6 @@ let printValue = value =>
   | VBool(b) => b ? "true" : "false"
   | VNil => "nil"
   | VFunction({name}) => `[fn: ${name}]`
-  | VClass({name}) => `[class: ${name}]`
+  | VClass({name}) => name
   | VInstance({class}) => `${class.name} instance`
   }
