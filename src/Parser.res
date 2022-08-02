@@ -47,6 +47,7 @@ and assignment = parser => {
 
   switch peek(parser).val {
   | Equal =>
+    let eqToken = peek(parser)
     advance(parser)
     switch expr.exprDesc {
     | ExprVariable(name) =>
@@ -59,7 +60,7 @@ and assignment = parser => {
       let loc = {start: expr.exprLoc.start, end: rhsExpr.exprLoc.end}
 
       Ast.Helper.Expr.set(~loc, object, name, rhsExpr)
-    | _ => raise(ParseError("Invalid assignment target.", peek(parser)))
+    | _ => raise(ParseError("Invalid assignment target.", eqToken))
     }
   | _ => expr
   }
