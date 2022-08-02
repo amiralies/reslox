@@ -10,7 +10,11 @@ type lexer = {
   source: string,
 }
 
-type lexerError =
+type rec lexerError = {
+  line: int,
+  desc: lexerErrorDesc,
+}
+and lexerErrorDesc =
   | UnknownChar
   | UnterminatedString
   | UnterminatedMultiLineComment
@@ -20,6 +24,13 @@ type singleScanResult =
   | SingleScanError(lexerError)
   | Skip
   | EndReached
+
+let errorToString = e =>
+  switch e {
+  | UnknownChar => `Unexpected character.`
+  | UnterminatedString => "Unterminated string."
+  | UnterminatedMultiLineComment => "Unterminated multiline comment."
+  }
 
 let makeLexer = source => {
   startIndex: 0,
@@ -131,7 +142,7 @@ let skipMultiLineComment = lexer => {
         advanceLineOnly(lexer)
       }
       aux(level, lexer)
-    | None => SingleScanError(UnterminatedMultiLineComment)
+    | None => SingleScanError({desc: UnterminatedMultiLineComment, line: lexer.currentLine})
     }
   }
 
@@ -140,7 +151,7 @@ let skipMultiLineComment = lexer => {
 
 let rec scanString = lexer =>
   switch peek(lexer) {
-  | None => SingleScanError(UnterminatedString)
+  | None => SingleScanError({desc: UnterminatedString, line: lexer.currentLine})
   | Some('"') =>
     let value = StringLabels.sub(
       lexer.source,
@@ -265,21 +276,24 @@ let scanToken = lexer =>
     | '"' => scanString(lexer)
     | c if isDigit(c) => scanNumber(lexer)
     | c if isAlpha(c) => scanIdentOrKeyword(lexer)
-    | _ => SingleScanError(UnknownChar)
+    | _ => SingleScanError({desc: UnknownChar, line: lexer.currentLine})
     }
   )
 
-let scanTokens: string => result<list<Location.located<Token.t>>, lexerError> = source => {
+let scanTokens: string => result<
+  list<Location.located<Token.t>>,
+  (list<lexerError>, list<Location.located<Token.t>>),
+> = source => {
   let lexer = makeLexer(source)
-  let rec loop = acc => {
+  let rec loop = (accTokens, accErrors) => {
     lexer.startIndex = lexer.currentIndex
     lexer.startLine = lexer.currentLine
     lexer.startCol = lexer.currentCol
 
     switch scanToken(lexer) {
-    | SingleScanError(err) => Error(err)
-    | LocatedToken(locatedToken) => loop(list{locatedToken, ...acc})
-    | Skip => loop(acc)
+    | SingleScanError(err) => loop(accTokens, list{err, ...accErrors})
+    | LocatedToken(locatedToken) => loop(list{locatedToken, ...accTokens}, accErrors)
+    | Skip => loop(accTokens, accErrors)
     | EndReached =>
       let eof = {
         Location.val: EOF,
@@ -294,11 +308,15 @@ let scanTokens: string => result<list<Location.located<Token.t>>, lexerError> = 
           },
         },
       }
-      let tokens = list{eof, ...acc}->List.reverse
+      let tokens = list{eof, ...accTokens}->List.reverse
+      let errors = accErrors->List.reverse
 
-      Ok(tokens)
+      switch errors {
+      | list{} => Ok(tokens)
+      | _ => Error(errors, tokens)
+      }
     }
   }
 
-  loop(list{})
+  loop(list{}, list{})
 }
