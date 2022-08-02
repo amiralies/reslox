@@ -12,7 +12,7 @@ let make = tokens => {
 }
 
 // type parseError = ParseError
-exception ParseError(string, Location.t)
+exception ParseError(string, Location.located<Token.t>)
 
 let peek = ({tokens, current}) => Array.getUnsafe(tokens, current)
 
@@ -29,7 +29,7 @@ let consumeIfOrRaise = (parser, p, message) =>
     advance(parser)
     token
   } else {
-    raise(ParseError(message, peek(parser).loc))
+    raise(ParseError(message, peek(parser)))
   }
 
 let consumeMapOrRaise = (parser, f, message) =>
@@ -38,7 +38,7 @@ let consumeMapOrRaise = (parser, f, message) =>
     let {loc} = peek(parser)
     advance(parser)
     {val: v, loc: loc}
-  | None => raise(ParseError(message, peek(parser).loc))
+  | None => raise(ParseError(message, peek(parser)))
   }
 
 let rec expression = parser => assignment(parser)
@@ -59,7 +59,7 @@ and assignment = parser => {
       let loc = {start: expr.exprLoc.start, end: rhsExpr.exprLoc.end}
 
       Ast.Helper.Expr.set(~loc, object, name, rhsExpr)
-    | _ => raise(ParseError("Invalid assignment target.", expr.exprLoc))
+    | _ => raise(ParseError("Invalid assignment target.", peek(parser)))
     }
   | _ => expr
   }
@@ -389,7 +389,7 @@ and primary = parser =>
 
     Ast.Helper.Expr.grouping(~loc, expr)
 
-  | _ => raise(ParseError("Expected expression", peek(parser).loc))
+  | _ => raise(ParseError("Expect expression.", peek(parser)))
   }
 
 let synchronize = parser => {
@@ -533,7 +533,7 @@ and method = parser => {
   }
 
   if peek(parser).val != LeftBrace {
-    raise(ParseError("Expect '{' before method body.", peek(parser).loc))
+    raise(ParseError("Expect '{' before method body.", peek(parser)))
   } else {
     let (_, body) = blockStatement(parser)
 
@@ -586,7 +586,7 @@ and function = parser => {
   }
 
   if peek(parser).val != LeftBrace {
-    raise(ParseError("Expect '{' before function body.", peek(parser).loc))
+    raise(ParseError("Expect '{' before function body.", peek(parser)))
   } else {
     let (bodyLoc, bodyItems) = blockStatement(parser)
 
