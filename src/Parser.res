@@ -681,7 +681,7 @@ and forStatement = parser => {
   }
 
   let maybeIncrement = switch peek(parser).val {
-  | SemiColon =>
+  | RightParen =>
     advance(parser) // consume semicolon
     None
   | _ =>
