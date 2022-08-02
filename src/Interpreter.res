@@ -121,9 +121,10 @@ let rec evaluate = (envContainer: envContainer, expr) =>
         if initCallable.arity != List.length(argumentsValues) {
           raise(
             EvalError(
-              `${class.name}'s init takes ${initCallable.arity->Int.toString} arguments but you have provided ${List.length(
-                  argumentsValues,
-                )->Int.toString}`,
+              "Expected " ++
+              initCallable.arity->Int.toString ++
+              " arguments but got " ++
+              List.length(arguments)->Int.toString ++ ".",
               callee.exprLoc,
             ),
           )
@@ -214,7 +215,7 @@ and evalUnary = ({uopDesc, uopLoc}, right) =>
     switch right {
     | VNumber(number) => VNumber(-.number)
     | VInstance(_) | VClass(_) | VFunction(_) | VString(_) | VBool(_) | VNil =>
-      raise(EvalError("Can't use unary '-' operator on non-number values", uopLoc))
+      raise(EvalError("Operand must be a number.", uopLoc))
     }
 
   | UopNot => VBool(!isTruthy(right))
