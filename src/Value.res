@@ -19,5 +19,5 @@ let printValue = value =>
   | VNil => "nil"
   | VFunction({name}) => `[fn: ${name}]`
   | VClass({name}) => `[class: ${name}]`
-  | VInstance({class}) => `[instance: of class ${class.name}]`
+  | VInstance({class}) => `${class.name} instance`
   }
