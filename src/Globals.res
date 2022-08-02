@@ -7,6 +7,7 @@ let globals = list{
       arity: 0,
       name: "clock",
       call: _ => VNumber((Js.Date.now() /. 1000.0)->Js.Math.floor_float),
+      toString: "<native fn>",
     }),
   ),
 }

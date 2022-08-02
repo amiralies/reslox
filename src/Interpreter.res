@@ -267,6 +267,7 @@ let rec execute = (envContainer: envContainer, stmt: Ast.stmt) =>
     let callable = {
       let closureEnvContainer = {env: envContainer.env}
       let callable = VFunction({
+        toString: `<fn ${name}>`,
         name: name,
         arity: parameters->List.length,
         call: arguments => {
@@ -337,7 +338,12 @@ let rec execute = (envContainer: envContainer, stmt: Ast.stmt) =>
 
           value
         }
-        {name: method.name, call: call, arity: method.parameters->List.length}
+        {
+          name: method.name,
+          call: call,
+          arity: method.parameters->List.length,
+          toString: `<fn ${method.name}>`,
+        }
       }
 
       ({name: method.name, bind: bind}, closureEnvContainer)
