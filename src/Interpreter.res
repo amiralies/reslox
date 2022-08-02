@@ -28,13 +28,13 @@ let isTruthy = value =>
 let applyArthimaticOrRaise = (opLoc, left, right, f) =>
   switch (left, right) {
   | (VNumber(left), VNumber(right)) => VNumber(f(left, right))
-  | _ => raise(EvalError("Operands should be numbers", opLoc))
+  | _ => raise(EvalError("Operands must be numbers.", opLoc))
   }
 
 let applyComparisonOrRaise = (opLoc, left, right, p) =>
   switch (left, right) {
   | (VNumber(left), VNumber(right)) => VBool(p(left, right))
-  | _ => raise(EvalError("Operands should be numbers", opLoc))
+  | _ => raise(EvalError("Operands must be numbers.", opLoc))
   }
 
 let rec evaluate = (envContainer: envContainer, expr) =>
@@ -141,7 +141,7 @@ let rec evaluate = (envContainer: envContainer, expr) =>
 
     let instance = switch maybeObject {
     | VInstance(instance) => instance
-    | _ => raise(EvalError("Only instances have properties", object.exprLoc))
+    | _ => raise(EvalError("Only instances have properties.", object.exprLoc))
     }
 
     switch MutableMap.String.get(instance.fields, propName) {
@@ -159,7 +159,7 @@ let rec evaluate = (envContainer: envContainer, expr) =>
 
     let instance = switch maybeObject {
     | VInstance(instance) => instance
-    | _ => raise(EvalError("Only instances have fields", object.exprLoc))
+    | _ => raise(EvalError("Only instances have fields.", object.exprLoc))
     }
 
     let value = evaluate(envContainer, value)
@@ -198,7 +198,7 @@ and evalBinary = (left, {bopDesc, bopLoc}, right) =>
     switch (left, right) {
     | (VNumber(left), VNumber(right)) => VNumber(left +. right)
     | (VString(left), VString(right)) => VString(left ++ right)
-    | _ => raise(EvalError("Both operands should be numbers or strings", bopLoc))
+    | _ => raise(EvalError("Operands must be two numbers or two strings.", bopLoc))
     }
   | BopGreater => applyComparisonOrRaise(bopLoc, left, right, (l, r) => l > r)
   | BopGreaterEqual => applyComparisonOrRaise(bopLoc, left, right, (l, r) => l >= r)
