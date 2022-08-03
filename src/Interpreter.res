@@ -109,7 +109,12 @@ let rec evaluate = (envContainer: envContainer, expr) =>
       switch class.methods->Map.String.get("init") {
       | None =>
         if List.length(argumentsValues) > 0 {
-          raise(EvalError(class.name ++ "'s init takes no arguments'", callee.exprLoc))
+          raise(
+            EvalError(
+              "Expected 0 arguments but got " ++ List.length(arguments)->Int.toString ++ ".",
+              callee.exprLoc,
+            ),
+          )
         }
         let instance = {class: class, fields: MutableMap.String.make()}
         VInstance(instance)
