@@ -14,7 +14,13 @@ and method = {name: string, bind: instance => callable}
 let printValue = value =>
   switch value {
   | VString(s) => s
-  | VNumber(f) => Float.toString(f)
+  | VNumber(f) =>
+    let isNegativeZero: float => bool = %raw(`x => Object.is(x, -0)`)
+    if isNegativeZero(f) {
+      "-0"
+    } else {
+      Float.toString(f)
+    }
   | VBool(b) => b ? "true" : "false"
   | VNil => "nil"
   | VFunction({toString}) => toString
