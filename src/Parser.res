@@ -309,7 +309,18 @@ and parseArgs = parser => {
         peek => peek == RightParen,
         "Expect ')' after arguments.",
       )
-      Location.mkLocated(~loc=rightParenLoc, List.reverse(list{arg, ...acc}))
+      let args = List.reverse(list{arg, ...acc})
+
+      if List.length(args) >= 255 {
+        raise(
+          ParseError(
+            "Can't have more than 255 arguments.",
+            parser.tokens[parser.current - 2]->Option.getExn,
+          ),
+        )
+      }
+
+      Location.mkLocated(~loc=rightParenLoc, args)
     }
   }
 
