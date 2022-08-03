@@ -106,7 +106,7 @@ let rec evaluate = (envContainer: envContainer, expr) =>
       }
 
     | VClass(class) =>
-      switch class.methods->Map.String.get("init") {
+      switch findMethod(class, "init") {
       | None =>
         if List.length(argumentsValues) > 0 {
           raise(
