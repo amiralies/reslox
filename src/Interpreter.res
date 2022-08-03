@@ -181,7 +181,7 @@ let rec evaluate = (envContainer: envContainer, expr) =>
     switch Env.get(envContainer.env, "super") {
     | Some(VClass(superclass)) =>
       switch superclass->findMethod(methodName) {
-      | None => raise(EvalError(`Undefind method '${methodName}'.`, expr.exprLoc)) // TODO
+      | None => raise(EvalError(`Undefined property '${methodName}'.`, expr.exprLoc)) // TODO
       | Some(method) =>
         let this = switch Env.get(envContainer.env, "this") {
         | Some(VInstance(instance)) => instance
