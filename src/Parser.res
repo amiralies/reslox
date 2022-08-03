@@ -76,7 +76,7 @@ and conditional = parser => {
       let _: Location.located<Token.t> = consumeIfOrRaise(
         parser,
         peek => peek == Colon,
-        "Expected ':' after expression",
+        "Expect ':' after expression",
       )
       let right = conditional(parser)
       let loc = {start: left.Ast.exprLoc.start, end: right.exprLoc.end}
@@ -788,7 +788,7 @@ and printStatement = parser => {
   let {loc: semiLoc} = consumeIfOrRaise(
     parser,
     peek => peek == SemiColon,
-    "Expected ';' after value.",
+    "Expect ';' after value.",
   )
   let loc = {start: printLoc.start, end: semiLoc.end}
 
@@ -799,7 +799,7 @@ and expressionStatement = parser => {
   let {loc: semiLoc} = consumeIfOrRaise(
     parser,
     peek => peek == SemiColon,
-    "Expected ';' after expression.",
+    "Expect ';' after expression.",
   )
   let loc = {start: expr.exprLoc.start, end: semiLoc.end}
 
