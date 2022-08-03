@@ -586,6 +586,15 @@ and function = parser => {
     }
   }
 
+  if List.length(parameters) >= 255 {
+    raise(
+      ParseError(
+        "Can't have more than 255 parameters.",
+        parser.tokens[parser.current - 2]->Option.getExn,
+      ),
+    )
+  }
+
   if peek(parser).val != LeftBrace {
     raise(ParseError("Expect '{' before function body.", peek(parser)))
   } else {
