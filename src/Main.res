@@ -1,5 +1,4 @@
-let hadError = ref(false)
-let hadRuntimeError = ref(false)
+type runResult = SyntaxError | RuntimeError | Fine
 
 let reportRuntimeError = (line, message) => {
   let tobelogged = message ++ "\n[line " ++ Int.toString(line) ++ "]"
@@ -20,52 +19,49 @@ let reportLexError = (e: Lexer.lexerError) => {
   Js.Console.error(`[line ${e.line->Int.toString}] Error: ${Lexer.errorToString(e.desc)}`)
 }
 
-let run = source => {
-  let tokens = switch Lexer.scanTokens(source) {
-  | Ok(tokens) => tokens
-  | Error(errors, partialTokens) =>
-    hadError := true
-    errors->List.forEach(reportLexError)
-    partialTokens
-  }
-
-  let parser = tokens->List.toArray->Parser.make
-  let maybeAst = Parser.parse(parser)
-  switch maybeAst {
-  | Ok(ast) =>
-    if !hadError.contents {
-      let runResult = Interpreter.interpret(ast)
-      switch runResult {
-      | Ok() => ()
+let run = source =>
+  switch Lexer.scanTokens(source) {
+  | Ok(tokens) =>
+    let parser = Parser.make(tokens->List.toArray)
+    switch parser->Parser.parse {
+    | Ok(ast) =>
+      switch Interpreter.interpret(ast) {
+      | Ok() => Fine
       | Error(msg, loc) =>
-        hadRuntimeError := true
         reportRuntimeError(loc.start.line, msg)
+        RuntimeError
       }
+    | Error(errors) =>
+      errors->List.forEach(((msg, located)) => reportParseError(located, msg))
+      SyntaxError
     }
 
-  | Error(errors) =>
-    hadError := true
-    errors->List.forEach(((msg, located)) => reportParseError(located, msg))
+  | Error(errors, partialTokens) =>
+    errors->List.forEach(reportLexError)
+
+    let parser = Parser.make(partialTokens->List.toArray)
+    switch parser->Parser.parse {
+    | Ok(_ast) => ()
+    | Error(errors) => errors->List.forEach(((msg, located)) => reportParseError(located, msg))
+    }
+
+    SyntaxError
   }
-}
 
 let runFile = path => {
   let source = Node.Fs.readFileAsUtf8Sync(path)
-  run(source)
+  let runResult = run(source)
 
-  if hadError.contents {
-    Node.Process.exit(65)
-  }
-
-  if hadRuntimeError.contents {
-    Node.Process.exit(70)
+  switch runResult {
+  | SyntaxError => Node.Process.exit(65)
+  | RuntimeError => Node.Process.exit(70)
+  | Fine => Node.Process.exit(0)
   }
 }
 
 let runPrompt = () => {
   let lineHandler = line => {
-    run(line)
-    hadError := false
+    let _runResult = run(line)
   }
 
   let () = Readline.onLine(~prompt="> ", lineHandler)
