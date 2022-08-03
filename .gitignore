@@ -3,3 +3,4 @@
 .bsb.lock
 *.bs.js
 .merlin
+playground/
