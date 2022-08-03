@@ -1,2 +1,4 @@
-let interpret: list<Ast.stmt> => Result.t<unit, (string, Location.t)>
-
+let interpret: (
+  ~initialEnv: Env.t<Value.t>=?,
+  list<Ast.stmt>,
+) => result<Env.t<Value.t>, (string, Location.t)>

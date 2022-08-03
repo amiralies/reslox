@@ -370,14 +370,19 @@ and executeBlock = (envContainer: envContainer, statements) => {
   envContainer.env = Env.exitBlock(envContainer.env)
 }
 
-let interpret = (program: list<Ast.stmt>) => {
-  let envContainer = makeEnvContainer()
-  Globals.globals->List.forEach(((name, value)) =>
-    envContainer.env = Env.define(envContainer.env, name, value)
-  )
+let interpret = (~initialEnv=?, program: list<Ast.stmt>) => {
+  let envContainer = switch initialEnv {
+  | Some(env) => {env: env}
+  | None =>
+    let envContainer = makeEnvContainer()
+    Globals.globals->List.forEach(((name, value)) =>
+      envContainer.env = Env.define(envContainer.env, name, value)
+    )
+    envContainer
+  }
 
   switch List.forEach(program, execute(envContainer)) {
-  | () => Ok()
+  | () => Ok(envContainer.env)
   | exception EvalError(msg, loc) => Error(msg, loc)
   }
 }
