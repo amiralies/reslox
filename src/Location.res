@@ -13,6 +13,8 @@ type located<'a> = {
   loc: t,
 }
 
+let mkLocated = (~loc, val) => {loc: loc, val: val}
+
 let dummy = {
   let dummyPos = {line: 0, col: 0}
   {

@@ -261,7 +261,7 @@ and call = parser => {
   let rec loop = (acc, parser) =>
     switch peek(parser).val {
     | LeftParen =>
-      let (args, rightParenLoc) = parseArgs(parser)
+      let {val: args, loc: rightParenLoc} = parseArgs(parser)
 
       let loc = {start: acc.exprLoc.start, end: rightParenLoc.end}
       let callExpr = Ast.Helper.Expr.call(~loc, acc, args)
@@ -309,14 +309,14 @@ and parseArgs = parser => {
         peek => peek == RightParen,
         "Expect ')' after arguments.",
       )
-      (List.reverse(list{arg, ...acc}), rightParenLoc)
+      Location.mkLocated(~loc=rightParenLoc, List.reverse(list{arg, ...acc}))
     }
   }
 
   if peek(parser).val == RightParen {
     let rightParenLoc = peek(parser).loc
     advance(parser)
-    (list{}, rightParenLoc)
+    Location.mkLocated(~loc=rightParenLoc, list{})
   } else {
     loop(list{}, parser)
   }
