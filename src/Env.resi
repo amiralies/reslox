@@ -6,7 +6,7 @@ let define: (t<'a>, string, 'a) => t<'a>
 
 let get: (t<'a>, Belt.Map.String.key) => option<'a>
 
-let assign: (t<'a>, Belt.Map.String.key, 'a) => result<t<'a>, unit>
+let assign: (t<'a>, Belt.Map.String.key, 'a) => result<unit, unit>
 
 let enterBlock: t<'a> => t<'a>
 

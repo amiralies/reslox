@@ -79,9 +79,7 @@ let rec evaluate = expr =>
   | ExprAssign(name, expr) =>
     let value = evaluate(expr)
     switch Env.assign(env.contents, name, value) {
-    | Ok(newEnv) =>
-      env := newEnv
-      value
+    | Ok() => value
     | Error() => raise(EvalError("Undefined variable '" ++ name ++ "'.", expr.exprLoc))
     }
   | ExprLogical(left, op, right) =>

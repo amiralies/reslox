@@ -1,5 +1,5 @@
 type rec t<'a> = {
-  current: Map.String.t<'a>,
+  current: Map.String.t<ref<'a>>,
   enclosing: option<t<'a>>,
 }
 
@@ -10,27 +10,24 @@ let empty = {
 
 let define = (t, name, value) => {
   enclosing: t.enclosing,
-  current: t.current->Map.String.set(name, value),
+  current: t.current->Map.String.set(name, ref(value)),
 }
 
 let rec get = (t, name) =>
   switch t.current->Map.String.get(name) {
-  | Some(value) => Some(value)
+  | Some(value) => Some(value.contents)
   | None => t.enclosing->Option.flatMap(get(_, name))
   }
 
 let rec assign = (t, name, value) =>
-  if Map.String.has(t.current, name) {
-    Ok({...t, current: t.current->Map.String.set(name, value)})
-  } else {
+  switch t.current->Map.String.get(name) {
+  | Some(valueRef) =>
+    valueRef.contents = value
+    Ok()
+  | None =>
     switch t.enclosing {
     | None => Error()
-    | Some(enclosing) =>
-      let maybeNewEnclosing = assign(enclosing, name, value)
-      switch maybeNewEnclosing {
-      | Ok(newEnclsoing) => Ok({current: t.current, enclosing: Some(newEnclsoing)})
-      | Error() => Error()
-      }
+    | Some(enclosing) => assign(enclosing, name, value)
     }
   }
 
