@@ -6,10 +6,10 @@ open Ast
 
 open! Value
 
-type envContainer = {mutable env: Env.t<Value.t>}
-
-let makeEnvContainer = () => {
-  env: Env.empty,
+let env = {
+  let env = ref(Env.empty)
+  Globals.globals->List.forEach(((name, value)) => env := Env.define(env.contents, name, value))
+  env
 }
 
 let rec findMethod = (class, methodName) =>
@@ -37,57 +37,57 @@ let applyComparisonOrRaise = (opLoc, left, right, p) =>
   | _ => raise(EvalError("Operands must be numbers.", opLoc))
   }
 
-let rec evaluate = (envContainer: envContainer, expr) =>
+let rec evaluate = expr =>
   switch expr.exprDesc {
   | ExprBinary(left, op, right) =>
-    let leftValue = evaluate(envContainer, left)
-    let rightValue = evaluate(envContainer, right)
+    let leftValue = evaluate(left)
+    let rightValue = evaluate(right)
     evalBinary(leftValue, op, rightValue)
-  | ExprGrouping(expr) => evaluate(envContainer, expr)
+  | ExprGrouping(expr) => evaluate(expr)
   | ExprLiteral(value) => value
   | ExprUnary(op, right) =>
-    let rightValue = evaluate(envContainer, right)
+    let rightValue = evaluate(right)
 
     evalUnary(op, rightValue)
   | ExprConditional(cond, thenBranch, elseBranch) =>
-    let condValue = evaluate(envContainer, cond)
+    let condValue = evaluate(cond)
 
-    evalConditional(envContainer, condValue, thenBranch, elseBranch)
+    evalConditional(condValue, thenBranch, elseBranch)
   | ExprVariable(name) =>
-    switch Env.get(envContainer.env, name) {
+    switch Env.get(env.contents, name) {
     | Some(value) => value
     | None => raise(EvalError("Undefined variable '" ++ name ++ "'.", expr.exprLoc))
     }
   | ExprAssign(name, expr) =>
-    let value = evaluate(envContainer, expr)
-    switch Env.assign(envContainer.env, name, value) {
+    let value = evaluate(expr)
+    switch Env.assign(env.contents, name, value) {
     | Ok(newEnv) =>
-      envContainer.env = newEnv
+      env := newEnv
       value
     | Error() => raise(EvalError("Undefined variable '" ++ name ++ "'.", expr.exprLoc))
     }
   | ExprLogical(left, op, right) =>
     switch op.lopDesc {
     | LopOr =>
-      let leftValue = evaluate(envContainer, left)
+      let leftValue = evaluate(left)
       if isTruthy(leftValue) {
         leftValue
       } else {
-        evaluate(envContainer, right)
+        evaluate(right)
       }
     | LopAnd =>
-      let leftValue = evaluate(envContainer, left)
+      let leftValue = evaluate(left)
       if isTruthy(leftValue) {
-        evaluate(envContainer, right)
+        evaluate(right)
       } else {
         leftValue
       }
     }
 
   | ExprCall(callee, arguments) =>
-    let calleeValue = evaluate(envContainer, callee)
+    let calleeValue = evaluate(callee)
 
-    let argumentsValues = arguments->List.map(argument => evaluate(envContainer, argument))
+    let argumentsValues = arguments->List.map(argument => evaluate(argument))
 
     switch calleeValue {
     | VFunction(callable) =>
@@ -143,7 +143,7 @@ let rec evaluate = (envContainer: envContainer, expr) =>
       raise(EvalError("Can only call functions and classes.", callee.exprLoc))
     }
   | ExprGet(object, propName) =>
-    let maybeObject = evaluate(envContainer, object)
+    let maybeObject = evaluate(object)
 
     let instance = switch maybeObject {
     | VInstance(instance) => instance
@@ -161,29 +161,29 @@ let rec evaluate = (envContainer: envContainer, expr) =>
     }
 
   | ExprSet(object, propName, value) =>
-    let maybeObject = evaluate(envContainer, object)
+    let maybeObject = evaluate(object)
 
     let instance = switch maybeObject {
     | VInstance(instance) => instance
     | _ => raise(EvalError("Only instances have fields.", object.exprLoc))
     }
 
-    let value = evaluate(envContainer, value)
+    let value = evaluate(value)
     instance.fields->MutableMap.String.set(propName, value)
     value
   | ExprThis =>
-    switch Env.get(envContainer.env, "this") {
+    switch Env.get(env.contents, "this") {
     | Some(value) => value
     | None => raise(EvalError("Cann't use this outside of a method", expr.exprLoc)) // TODO
     }
 
   | ExprSuper(methodName) =>
-    switch Env.get(envContainer.env, "super") {
+    switch Env.get(env.contents, "super") {
     | Some(VClass(superclass)) =>
       switch superclass->findMethod(methodName) {
       | None => raise(EvalError(`Undefined property '${methodName}'.`, expr.exprLoc)) // TODO
       | Some(method) =>
-        let this = switch Env.get(envContainer.env, "this") {
+        let this = switch Env.get(env.contents, "this") {
         | Some(VInstance(instance)) => instance
         | None | Some(_) => raise(Failure("Internal error"))
         }
@@ -226,85 +226,84 @@ and evalUnary = ({uopDesc, uopLoc}, right) =>
   | UopNot => VBool(!isTruthy(right))
   }
 
-and evalConditional = (envContainer: envContainer, cond, thenBranch, elseBranch) =>
+and evalConditional = (cond, thenBranch, elseBranch) =>
   if isTruthy(cond) {
-    evaluate(envContainer, thenBranch)
+    evaluate(thenBranch)
   } else {
-    evaluate(envContainer, elseBranch)
+    evaluate(elseBranch)
   }
 
-let rec execute = (envContainer: envContainer, stmt: Ast.stmt) =>
+let rec execute = (stmt: Ast.stmt) =>
   switch stmt.stmtDesc {
   | StmtExpression(expr) =>
-    let _: Value.t = evaluate(envContainer, expr)
+    let _: Value.t = evaluate(expr)
 
   | StmtPrint(expr) =>
-    let value = evaluate(envContainer, expr)
+    let value = evaluate(expr)
     Js.log(Value.printValue(value))
 
   | StmtVar(name, maybeInitExpr) =>
     let value = switch maybeInitExpr {
-    | Some(initExpr) => evaluate(envContainer, initExpr)
+    | Some(initExpr) => evaluate(initExpr)
     | None => VNil
     }
 
-    let newEnv = Env.define(envContainer.env, name, value)
-    envContainer.env = newEnv
+    let newEnv = Env.define(env.contents, name, value)
+    env := newEnv
 
-  | StmtBlock(statements) => executeBlock(envContainer, statements)
+  | StmtBlock(statements) => executeBlock(statements)
 
   | StmtIf(condition, thenBranch, elseBranch) =>
-    let conditionValue = evaluate(envContainer, condition)
+    let conditionValue = evaluate(condition)
 
     if isTruthy(conditionValue) {
-      execute(envContainer, thenBranch)
+      execute(thenBranch)
     } else {
-      Option.forEach(elseBranch, execute(envContainer, _))
+      Option.forEach(elseBranch, execute)
     }
 
   | StmtWhile(condition, body) =>
-    while isTruthy(evaluate(envContainer, condition)) {
-      execute(envContainer, body)
+    while isTruthy(evaluate(condition)) {
+      execute(body)
     }
   | StmtFunction(name, parameters, body) =>
-    let callable = {
-      let closureEnvContainer = {env: envContainer.env}
-      let callable = VFunction({
-        toString: `<fn ${name}>`,
-        name: name,
-        arity: parameters->List.length,
-        call: arguments => {
-          let closure = {env: closureEnvContainer.env}
-          parameters->List.forEachWithIndex((i, parameter) =>
-            closure.env = Env.define(closure.env, parameter, arguments->List.getExn(i))
-          )
+    let closure = ref(env.contents)
+    let call = arguments => {
+      let currentEnv = env.contents
+      env := Env.enterBlock(closure.contents)
+      parameters->List.forEachWithIndex((i, parameter) =>
+        env := Env.define(env.contents, parameter, arguments->List.getExn(i))
+      )
 
-          let value = try {
-            executeBlock(closure, body)
-            VNil
-          } catch {
-          | Return(value) => value
-          }
+      let value = try {
+        executeBlock(body)
+        VNil
+      } catch {
+      | Return(value) => value
+      }
 
-          value
-        },
-      })
-      closureEnvContainer.env = Env.define(closureEnvContainer.env, name, callable)
-      callable
+      closure := Env.exitBlock(env.contents)
+      env := currentEnv
+      value
     }
+    let callable = VFunction({
+      toString: `<fn ${name}>`,
+      name: name,
+      arity: parameters->List.length,
+      call: call,
+    })
 
-    envContainer.env = Env.define(envContainer.env, name, callable)
+    env := Env.define(env.contents, name, callable)
+    closure := Env.define(closure.contents, name, callable)
   | StmtReturn(maybeExpr) =>
-    let value = maybeExpr->Option.mapWithDefault(VNil, evaluate(envContainer, _))
+    let value = maybeExpr->Option.mapWithDefault(VNil, evaluate)
 
     raise(Return(value))
   | StmtClass(name, maybeSuperClassName, methodDecls) =>
     // TODO Refactor
 
     let maybeSuperClassValue =
-      maybeSuperClassName->Option.flatMap(superClassName =>
-        Env.get(envContainer.env, superClassName)
-      )
+      maybeSuperClassName->Option.flatMap(superClassName => Env.get(env.contents, superClassName))
 
     let maybeSuperClass = switch maybeSuperClassValue {
     | None => None
@@ -312,26 +311,26 @@ let rec execute = (envContainer: envContainer, stmt: Ast.stmt) =>
     | Some(_) => raise(EvalError("Superclass must be a class.", stmt.stmtLoc))
     }
 
-    let closureEnvContainer = {env: envContainer.env}
     switch maybeSuperClass {
     | None => ()
-    | Some(superClass) =>
-      closureEnvContainer.env = Env.define(closureEnvContainer.env, "super", VClass(superClass))
+    | Some(superClass) => env := Env.define(env.contents, "super", VClass(superClass))
     }
 
     let methods = methodDecls->List.map(method => {
+      let closure = ref(env.contents)
       let isInit = method.name == "init"
       let bind = instance => {
         let call = arguments => {
-          let closure = {env: closureEnvContainer.env}
-          closure.env = Env.define(closure.env, "this", VInstance(instance))
+          let currentEnv = env.contents
+          env := Env.enterBlock(closure.contents)
+          env := Env.define(env.contents, "this", VInstance(instance))
 
           method.parameters->List.forEachWithIndex((i, parameter) =>
-            closure.env = Env.define(closure.env, parameter, arguments->List.getExn(i))
+            env := Env.define(env.contents, parameter, arguments->List.getExn(i))
           )
 
           let value = try {
-            executeBlock(closure, method.body)
+            executeBlock(method.body)
             VNil
           } catch {
           | Return(value) => value
@@ -339,6 +338,8 @@ let rec execute = (envContainer: envContainer, stmt: Ast.stmt) =>
 
           let value = isInit ? VInstance(instance) : value
 
+          closure := Env.exitBlock(env.contents)
+          env := currentEnv
           value
         }
         {
@@ -349,7 +350,7 @@ let rec execute = (envContainer: envContainer, stmt: Ast.stmt) =>
         }
       }
 
-      ({name: method.name, bind: bind}, closureEnvContainer)
+      ({name: method.name, bind: bind}, closure)
     })
 
     let closures = List.map(methods, snd)
@@ -362,30 +363,20 @@ let rec execute = (envContainer: envContainer, stmt: Ast.stmt) =>
     let class = VClass({name: name, maybeSuperClass: maybeSuperClass, methods: methods})
 
     closures->List.forEach(closure => {
-      closure.env = Env.define(closure.env, name, class)
+      closure := Env.define(closure.contents, name, class)
     })
 
-    envContainer.env = Env.define(envContainer.env, name, class)
+    env := Env.define(env.contents, name, class)
   }
-and executeBlock = (envContainer: envContainer, statements) => {
-  envContainer.env = Env.enterBlock(envContainer.env)
-  List.forEach(statements, execute(envContainer))
-  envContainer.env = Env.exitBlock(envContainer.env)
+and executeBlock = statements => {
+  env := Env.enterBlock(env.contents)
+  List.forEach(statements, execute)
+  env := Env.exitBlock(env.contents)
 }
 
-let interpret = (~initialEnv=?, program: list<Ast.stmt>) => {
-  let envContainer = switch initialEnv {
-  | Some(env) => {env: env}
-  | None =>
-    let envContainer = makeEnvContainer()
-    Globals.globals->List.forEach(((name, value)) =>
-      envContainer.env = Env.define(envContainer.env, name, value)
-    )
-    envContainer
-  }
-
-  switch List.forEach(program, execute(envContainer)) {
-  | () => Ok(envContainer.env)
+let interpret = (program: list<Ast.stmt>) => {
+  switch List.forEach(program, execute) {
+  | () => Ok()
   | exception EvalError(msg, loc) => Error(msg, loc)
   }
 }

@@ -1,4 +1,4 @@
-type runResult = SyntaxError | RuntimeError | Fine(Env.t<Value.t>)
+type runResult = SyntaxError | RuntimeError | Fine
 
 let reportRuntimeError = (line, message) => {
   let tobelogged = message ++ "\n[line " ++ Int.toString(line) ++ "]"
@@ -19,14 +19,14 @@ let reportLexError = (e: Lexer.lexerError) => {
   Js.Console.error(`[line ${e.line->Int.toString}] Error: ${Lexer.errorToString(e.desc)}`)
 }
 
-let run = (~env=?, source) =>
+let run = source =>
   switch Lexer.scanTokens(source) {
   | Ok(tokens) =>
     let parser = Parser.make(tokens->List.toArray)
     switch parser->Parser.parse {
     | Ok(ast) =>
-      switch Interpreter.interpret(~initialEnv=?env, ast) {
-      | Ok(env) => Fine(env)
+      switch Interpreter.interpret(ast) {
+      | Ok() => Fine
       | Error(msg, loc) =>
         reportRuntimeError(loc.start.line, msg)
         RuntimeError
@@ -55,19 +55,13 @@ let runFile = path => {
   switch runResult {
   | SyntaxError => Node.Process.exit(65)
   | RuntimeError => Node.Process.exit(70)
-  | Fine(_) => Node.Process.exit(0)
+  | Fine => Node.Process.exit(0)
   }
 }
 
 let runPrompt = () => {
-  let lastEnv = ref(None)
   let lineHandler = line => {
-    let runResult = run(~env=?lastEnv.contents, line)
-    switch runResult {
-    | SyntaxError
-    | RuntimeError => ()
-    | Fine(env) => lastEnv := Some(env)
-    }
+    let _runResult = run(line)
   }
 
   let () = Readline.onLine(~prompt="> ", lineHandler)
