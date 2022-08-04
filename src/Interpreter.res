@@ -12,6 +12,24 @@ let env = {
   env
 }
 
+let isEq = (left, right) =>
+  switch (left, right) {
+  | (VFunction(_), VFunction(_)) => left === right
+  | (VClass(_), VClass(_)) => left === right
+  | (VInstance(_), VInstance(_)) => left === right
+  | (VNil, VNil) => true
+  | (VNumber(l), VNumber(r)) => l == r
+  | (VString(l), VString(r)) => l == r
+  | (VBool(l), VBool(r)) => l == r
+  | (VString(_), _)
+  | (VNumber(_), _)
+  | (VBool(_), _)
+  | (VNil, _)
+  | (VFunction(_), _)
+  | (VClass(_), _)
+  | (VInstance(_), _) => false
+  }
+
 let rec findMethod = (class, methodName) =>
   switch (Map.String.get(class.methods, methodName), class.maybeSuperClass) {
   | (Some(method), _) => Some(method)
@@ -210,8 +228,8 @@ and evalBinary = (left, {bopDesc, bopLoc}, right) =>
   | BopGreaterEqual => applyComparisonOrRaise(bopLoc, left, right, (l, r) => l >= r)
   | BopLess => applyComparisonOrRaise(bopLoc, left, right, (l, r) => l < r)
   | BopLessEqual => applyComparisonOrRaise(bopLoc, left, right, (l, r) => l <= r)
-  | BopEqual => VBool(left == right)
-  | BopNotEqual => VBool(left != right)
+  | BopEqual => VBool(isEq(left, right))
+  | BopNotEqual => VBool(!isEq(left, right))
   }
 
 and evalUnary = ({uopDesc, uopLoc}, right) =>
