@@ -263,10 +263,8 @@ let rec execute = (envContainer: envContainer, stmt: Ast.stmt) =>
     }
 
   | StmtWhile(condition, body) =>
-    let conditionValue = evaluate(envContainer, condition)
-    if isTruthy(conditionValue) {
+    while isTruthy(evaluate(envContainer, condition)) {
       execute(envContainer, body)
-      execute(envContainer, stmt)
     }
   | StmtFunction(name, parameters, body) =>
     let callable = {
