@@ -148,7 +148,6 @@ let rec resolveStmt = (ctx, stmt) =>
     }
 
     let ctx = beginScope(ctx)
-    ctx.scope.current->MutableMap.set("this", {defined: true}) // TODO do we need this anyway?
 
     let ctx = List.reduce(methods, ctx, (ctx, method) => {
       let (ctx, prevFunKind) = enterFunOrMethod(ctx, method.name == "init" ? Init : Method)
@@ -192,13 +191,12 @@ and resolveExpr = (ctx, expr) =>
         AnalyzeError("Can't read local variable in its own initializer.", expr.exprLoc, Some(name)),
       )
 
-    | None | Some(_) => resolveLocal(ctx, name)
+    | None | Some(_) => ctx
     }
     ctx
 
-  | ExprAssign(name, value) =>
+  | ExprAssign(_, value) =>
     let ctx = resolveExpr(ctx, value)
-    let ctx = resolveLocal(ctx, name)
     ctx
 
   | ExprBinary(left, _, right) => ctx->resolveExpr(left)->resolveExpr(right)
@@ -231,8 +229,8 @@ and resolveExpr = (ctx, expr) =>
     if ctx.classKind == NoClass {
       raise(AnalyzeError("Can't use 'this' outside of a class.", expr.exprLoc, Some("this")))
     }
+    ctx
 
-    resolveLocal(ctx, "this")
   | ExprSuper(_) =>
     switch ctx.classKind {
     | NoClass =>
@@ -245,13 +243,9 @@ and resolveExpr = (ctx, expr) =>
           Some("super"),
         ),
       )
-    | InClass(SubClass) => resolveLocal(ctx, "super")
+    | InClass(SubClass) => ctx
     }
   }
-and resolveLocal = (ctx, _name) => {
-  // maybe Remove this TODO
-  ctx
-}
 
 let analyze = (program: list<Ast.stmt>) => {
   let errors = ref(list{})
