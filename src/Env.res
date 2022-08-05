@@ -22,7 +22,7 @@ let rec get = (t, name) =>
 let rec assign = (t, name, value) =>
   switch t.current->Map.String.get(name) {
   | Some(valueRef) =>
-    valueRef.contents = value
+    valueRef := value
     Ok()
   | None =>
     switch t.enclosing {
