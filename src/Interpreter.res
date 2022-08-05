@@ -197,7 +197,7 @@ let rec evaluate = expr =>
     switch Env.get(env.contents, "super") {
     | Some(VClass(superclass)) =>
       switch superclass->findMethod(methodName) {
-      | None => raise(EvalError(`Undefined property '${methodName}'.`, expr.exprLoc)) // TODO
+      | None => raise(EvalError(`Undefined property '${methodName}'.`, expr.exprLoc))
       | Some(method) =>
         let this = switch Env.get(env.contents, "this") {
         | Some(VInstance(instance)) => instance
@@ -214,7 +214,7 @@ let rec evaluate = expr =>
 and evalBinary = (left, {bopDesc, bopLoc}, right) =>
   switch bopDesc {
   | BopSub => applyArthimaticOrRaise(bopLoc, left, right, (l, r) => l -. r)
-  | BopDiv => applyArthimaticOrRaise(bopLoc, left, right, (l, r) => l /. r) // TODO Division by zero
+  | BopDiv => applyArthimaticOrRaise(bopLoc, left, right, (l, r) => l /. r)
   | BopMul => applyArthimaticOrRaise(bopLoc, left, right, (l, r) => l *. r)
   | BopAdd =>
     switch (left, right) {
@@ -316,8 +316,6 @@ let rec execute = (stmt: Ast.stmt) =>
 
     raise(Return(value))
   | StmtClass(name, maybeSuperClassName, methodDecls) =>
-    // TODO Refactor
-
     let maybeSuperClassValue =
       maybeSuperClassName->Option.flatMap(superClassName => Env.get(env.contents, superClassName))
 
