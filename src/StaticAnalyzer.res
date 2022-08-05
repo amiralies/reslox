@@ -97,8 +97,8 @@ let rec resolveStmt = (ctx, stmt) =>
     let (ctx, prevFunKind) = enterFunOrMethod(ctx, Fun)
     let ctx = beginScope(ctx)
     List.forEach(params, param => {
-      declare(ctx, param, stmt.stmtLoc)
-      define(ctx, param)
+      declare(ctx, param.val, param.loc)
+      define(ctx, param.val)
     })
     let ctx = resolveStmts(ctx, body)
     let ctx = endScope(ctx)
@@ -154,8 +154,8 @@ let rec resolveStmt = (ctx, stmt) =>
       let (ctx, prevFunKind) = enterFunOrMethod(ctx, method.name == "init" ? Init : Method)
       let ctx = beginScope(ctx)
       List.forEach(method.parameters, param => {
-        declare(ctx, param, stmt.stmtLoc)
-        define(ctx, param)
+        declare(ctx, param.val, param.loc)
+        define(ctx, param.val)
       })
       let ctx = resolveStmts(ctx, method.body)
       let ctx = endScope(ctx)

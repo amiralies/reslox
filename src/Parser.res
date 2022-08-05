@@ -517,7 +517,7 @@ and method = parser => {
 
   let parameters = {
     let rec loop = (acc, parser) => {
-      let {val: paramName} = consumeMapOrRaise(
+      let {val: paramName, loc: paramLoc} = consumeMapOrRaise(
         parser,
         token =>
           switch token {
@@ -526,13 +526,14 @@ and method = parser => {
           },
         "Expect param name.",
       )
+      let parameter = Location.mkLocated(~loc=paramLoc, paramName)
 
       if peek(parser).val == Comma {
         advance(parser)
-        loop(list{paramName, ...acc}, parser)
+        loop(list{parameter, ...acc}, parser)
       } else {
         let _ = consumeIfOrRaise(parser, t => t === RightParen, "Expect ')' after parameters.")
-        List.reverse(list{paramName, ...acc})
+        List.reverse(list{parameter, ...acc})
       }
     }
 
@@ -579,7 +580,7 @@ and function = parser => {
 
   let parameters = {
     let rec loop = (acc, parser) => {
-      let {val: paramName} = consumeMapOrRaise(
+      let {val: paramName, loc: paramLoc} = consumeMapOrRaise(
         parser,
         token =>
           switch token {
@@ -588,13 +589,14 @@ and function = parser => {
           },
         "Expect param name.",
       )
+      let parameter = Location.mkLocated(~loc=paramLoc, paramName)
 
       if peek(parser).val == Comma {
         advance(parser)
-        loop(list{paramName, ...acc}, parser)
+        loop(list{parameter, ...acc}, parser)
       } else {
         let _ = consumeIfOrRaise(parser, t => t === RightParen, "Expect ')' after parameters.")
-        List.reverse(list{paramName, ...acc})
+        List.reverse(list{parameter, ...acc})
       }
     }
 

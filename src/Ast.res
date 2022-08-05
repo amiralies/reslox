@@ -57,12 +57,12 @@ and stmtDesc =
   | StmtBlock(list<stmt>)
   | StmtIf(expr, stmt, option<stmt>)
   | StmtWhile(expr, stmt)
-  | StmtFunction(string, list<string>, list<stmt>)
+  | StmtFunction(string, list<Location.located<string>>, list<stmt>)
   | StmtReturn(option<expr>)
   | StmtClass(string, option<string>, list<method>)
 and method = {
   name: string,
-  parameters: list<string>,
+  parameters: list<Location.located<string>>,
   body: list<stmt>,
 }
 

@@ -288,7 +288,7 @@ let rec execute = (stmt: Ast.stmt) =>
       let currentEnv = env.contents
       env := Env.enterBlock(closure.contents)
       parameters->List.forEachWithIndex((i, parameter) =>
-        env := Env.define(env.contents, parameter, arguments->List.getExn(i))
+        env := Env.define(env.contents, parameter.val, arguments->List.getExn(i))
       )
 
       let value = try {
@@ -342,7 +342,7 @@ let rec execute = (stmt: Ast.stmt) =>
           env := Env.define(env.contents, "this", VInstance(instance))
 
           method.parameters->List.forEachWithIndex((i, parameter) =>
-            env := Env.define(env.contents, parameter, arguments->List.getExn(i))
+            env := Env.define(env.contents, parameter.val, arguments->List.getExn(i))
           )
 
           let value = try {
