@@ -1,4 +1,4 @@
-type runResult = SyntaxError | RuntimeError | Fine
+type runResult = SyntaxError | RuntimeError | AnalyzeError | Fine
 
 let reportRuntimeError = (line, message) => {
   let tobelogged = message ++ "\n[line " ++ Int.toString(line) ++ "]"
@@ -19,17 +19,32 @@ let reportLexError = (e: Lexer.lexerError) => {
   Js.Console.error(`[line ${e.line->Int.toString}] Error: ${Lexer.errorToString(e.desc)}`)
 }
 
+let reportAnalyzeError = (line, where, message) => {
+  let where = switch where {
+  | None => ""
+  | Some(where) => `at '${where}'`
+  }
+
+  Js.Console.error(`[line ${line->Int.toString}] Error ${where}: ${message}`)
+}
+
 let run = source =>
   switch Lexer.scanTokens(source) {
   | Ok(tokens) =>
     let parser = Parser.make(tokens->List.toArray)
     switch parser->Parser.parse {
     | Ok(ast) =>
-      switch Interpreter.interpret(ast) {
-      | Ok() => Fine
-      | Error(msg, loc) =>
-        reportRuntimeError(loc.start.line, msg)
-        RuntimeError
+      switch StaticAnalyzer.analyze(ast) {
+      | Ok(_) =>
+        switch Interpreter.interpret(ast) {
+        | Ok() => Fine
+        | Error(msg, loc) =>
+          reportRuntimeError(loc.start.line, msg)
+          RuntimeError
+        }
+      | Error((msg, loc, maybeWhere)) =>
+        reportAnalyzeError(loc.start.line, maybeWhere, msg)
+        AnalyzeError
       }
     | Error(errors) =>
       errors->List.forEach(((msg, located)) => reportParseError(located, msg))
@@ -53,7 +68,7 @@ let runFile = path => {
   let runResult = run(source)
 
   switch runResult {
-  | SyntaxError => Node.Process.exit(65)
+  | SyntaxError | AnalyzeError => Node.Process.exit(65)
   | RuntimeError => Node.Process.exit(70)
   | Fine => Node.Process.exit(0)
   }
