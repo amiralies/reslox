@@ -1,13 +1,13 @@
-type t<'a>
+type t
 
-let empty: t<'a>
+let empty: t
 
-let define: (t<'a>, string, 'a) => t<'a>
+let define: (t, string, Value.t) => t
 
-let get: (t<'a>, Belt.Map.String.key) => option<'a>
+let get: (t, string) => option<Value.t>
 
-let assign: (t<'a>, Belt.Map.String.key, 'a) => result<unit, unit>
+let assign: (t, string,Value.t) => result<unit, unit>
 
-let enterBlock: t<'a> => t<'a>
+let enterBlock: t => t
 
-let exitBlock: t<'a> => t<'a>
+let exitBlock: t => t
