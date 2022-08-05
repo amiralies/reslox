@@ -24,6 +24,8 @@ and valueState = {defined: bool}
 
 let mkMap = () => MutableMap.make(~id=module(StringId))
 
+let isInGlobalScope = ctx => Option.isNone(ctx.scope.enclosing)
+
 let mkEmptyCtx = () => {
   funKind: NoFun,
   classKind: NoClass,
@@ -170,7 +172,7 @@ let rec resolveStmt = (ctx, stmt) =>
 
 and resolveStmts = (ctx, stmts) => stmts->List.reduce(ctx, resolveStmt)
 and declare = (ctx, name, loc) => {
-  if ctx.scope.current->MutableMap.has(name) {
+  if ctx.scope.current->MutableMap.has(name) && !isInGlobalScope(ctx) {
     raise(AnalyzeError("Already a variable with this name in this scope.", loc, Some(name)))
   }
   ctx.scope.current->MutableMap.set(name, {defined: false})
@@ -185,12 +187,12 @@ and resolveExpr = (ctx, expr) =>
   switch expr.exprDesc {
   | ExprVariable(name) =>
     let ctx = switch MutableMap.get(ctx.scope.current, name) {
-    | Some({defined: false}) =>
+    | Some({defined: false}) if !isInGlobalScope(ctx) =>
       raise(
         AnalyzeError("Can't read local variable in its own initializer.", expr.exprLoc, Some(name)),
       )
 
-    | None | Some({defined: true}) => resolveLocal(ctx, name)
+    | None | Some(_) => resolveLocal(ctx, name)
     }
     ctx
 
@@ -251,10 +253,22 @@ and resolveLocal = (ctx, _name) => {
   ctx
 }
 
-let analyze = (program: list<Ast.stmt>) =>
-  try {
-    let _: context = List.reduce(program, mkEmptyCtx(), resolveStmt)
-    Ok()
-  } catch {
-  | AnalyzeError(msg, loc, maybeWhere) => Error((msg, loc, maybeWhere))
+let analyze = (program: list<Ast.stmt>) => {
+  let errors = ref(list{})
+
+  let ctx = ref(mkEmptyCtx())
+  List.forEach(program, stmt => {
+    try {
+      ctx := resolveStmt(ctx.contents, stmt)
+    } catch {
+    | AnalyzeError(msg, loc, maybeWhere) =>
+      let error = (msg, loc, maybeWhere)
+      errors := list{error, ...errors.contents}
+    }
+  })
+
+  switch errors.contents {
+  | list{} => Ok()
+  | _ => Error(errors.contents->List.reverse)
   }
+}

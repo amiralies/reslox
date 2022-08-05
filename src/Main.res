@@ -42,8 +42,10 @@ let run = source =>
           reportRuntimeError(loc.start.line, msg)
           RuntimeError
         }
-      | Error((msg, loc, maybeWhere)) =>
-        reportAnalyzeError(loc.start.line, maybeWhere, msg)
+      | Error(errors) =>
+        List.forEach(errors, ((msg, loc, maybeWhere)) =>
+          reportAnalyzeError(loc.start.line, maybeWhere, msg)
+        )
         AnalyzeError
       }
     | Error(errors) =>
