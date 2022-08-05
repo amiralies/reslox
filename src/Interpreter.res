@@ -327,11 +327,6 @@ let rec execute = (stmt: Ast.stmt) =>
     | Some(_) => raise(EvalError("Superclass must be a class.", stmt.stmtLoc))
     }
 
-    switch maybeSuperClass {
-    | None => ()
-    | Some(superClass) => env := Env.define(env.contents, "super", VClass(superClass))
-    }
-
     let methods = methodDecls->List.map(method => {
       let closure = ref(env.contents)
       let isInit = method.name == "init"
@@ -339,6 +334,12 @@ let rec execute = (stmt: Ast.stmt) =>
         let call = arguments => {
           let currentEnv = env.contents
           env := Env.enterBlock(closure.contents)
+
+          switch maybeSuperClass {
+          | None => ()
+          | Some(superClass) => env := Env.define(env.contents, "super", VClass(superClass))
+          }
+
           env := Env.define(env.contents, "this", VInstance(instance))
 
           method.parameters->List.forEachWithIndex((i, parameter) =>
