@@ -190,7 +190,7 @@ let rec evaluate = expr =>
   | ExprThis =>
     switch Env.get(env.contents, "this") {
     | Some(value) => value
-    | None => raise(EvalError("Cann't use this outside of a method", expr.exprLoc)) // TODO
+    | None => failwith("Internal Error: can't find 'this'")
     }
 
   | ExprSuper(methodName) =>
@@ -201,13 +201,13 @@ let rec evaluate = expr =>
       | Some(method) =>
         let this = switch Env.get(env.contents, "this") {
         | Some(VInstance(instance)) => instance
-        | None | Some(_) => raise(Failure("Internal error"))
+        | None | Some(_) => failwith("Internal error: unbound this")
         }
 
         VFunction(method.bind(this))
       }
-    | Some(_) => raise(Failure("Internal error super cannot be anything other VClass"))
-    | None => raise(EvalError("no super allowed here or class is not folan", expr.exprLoc)) // TODO
+    | Some(_) => failwith("Internal error super cannot be anything other VClass")
+    | None => failwith("Internal error: Can't find 'super'")
     }
   }
 
