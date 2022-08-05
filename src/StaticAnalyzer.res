@@ -8,35 +8,52 @@ module StringId = Id.MakeComparable({
 })
 
 type rec context = {
-  funKind: funKind,
+  funKind: inFunStatus,
+  classKind: inClassStatus,
   scope: scope,
 }
 and scope = {
   current: MutableMap.t<string, valueState, StringId.identity>,
   enclosing: option<scope>,
 }
-and funKind = NoFun | Fun
+and inClassStatus = NoClass | InClass(classKind)
+and classKind = Class | SubClass
+and inFunStatus = NoFun | InFun(funKind)
+and funKind = Fun | Method | Init
 and valueState = {defined: bool}
 
 let mkMap = () => MutableMap.make(~id=module(StringId))
 
 let mkEmptyCtx = () => {
   funKind: NoFun,
+  classKind: NoClass,
   scope: {
     current: mkMap(),
     enclosing: None,
   },
 }
 
-let enterFun = ctx => {
+let enterFunOrMethod = (ctx, kind) => {
   let prevFunkind = ctx.funKind
-  let ctx = {...ctx, funKind: Fun}
+  let ctx = {...ctx, funKind: InFun(kind)}
 
   (ctx, prevFunkind)
 }
 
-let exitFun = (ctx, prevFunKind) => {
+let exitFunOrMethod = (ctx, prevFunKind) => {
   let ctx = {...ctx, funKind: prevFunKind}
+
+  ctx
+}
+
+let enterClass = (ctx, kind) => {
+  let prevClassKind = ctx.classKind
+  let ctx = {...ctx, classKind: InClass(kind)}
+  (ctx, prevClassKind)
+}
+
+let exitClass = (ctx, prevClassKind) => {
+  let ctx = {...ctx, classKind: prevClassKind}
 
   ctx
 }
@@ -75,7 +92,7 @@ let rec resolveStmt = (ctx, stmt) =>
     declare(ctx, name, stmt.stmtLoc)
     define(ctx, name)
 
-    let (ctx, prevFunKind) = enterFun(ctx)
+    let (ctx, prevFunKind) = enterFunOrMethod(ctx, Fun)
     let ctx = beginScope(ctx)
     List.forEach(params, param => {
       declare(ctx, param, stmt.stmtLoc)
@@ -83,7 +100,7 @@ let rec resolveStmt = (ctx, stmt) =>
     })
     let ctx = resolveStmts(ctx, body)
     let ctx = endScope(ctx)
-    let ctx = exitFun(ctx, prevFunKind)
+    let ctx = exitFunOrMethod(ctx, prevFunKind)
 
     ctx
 
@@ -102,7 +119,12 @@ let rec resolveStmt = (ctx, stmt) =>
       raise(AnalyzeError("Can't return from top-level code.", stmt.stmtLoc, Some("return")))
     }
 
-    let ctx = maybeExpr->Option.mapWithDefault(ctx, resolveExpr(ctx))
+    let ctx = switch maybeExpr {
+    | None => ctx
+    | Some(_) if ctx.funKind == InFun(Init) =>
+      raise(AnalyzeError("Can't return a value from an initializer.", stmt.stmtLoc, Some("return")))
+    | Some(expr) => resolveExpr(ctx, expr)
+    }
     ctx
 
   | StmtWhile(condition, body) =>
@@ -110,7 +132,40 @@ let rec resolveStmt = (ctx, stmt) =>
     let ctx = resolveStmt(ctx, body)
     ctx
 
-  | StmtClass(_, _, _) => ctx // TODO
+  | StmtClass(name, superclass, methods) =>
+    let (ctx, prevClassKind) = enterClass(ctx, superclass == None ? Class : SubClass)
+
+    declare(ctx, name, stmt.stmtLoc)
+    define(ctx, name)
+
+    switch superclass {
+    | Some(sc) if sc == name =>
+      raise(AnalyzeError("A class can't inherit from itself.", stmt.stmtLoc, Some(sc)))
+
+    | None | Some(_) => ()
+    }
+
+    let ctx = beginScope(ctx)
+    ctx.scope.current->MutableMap.set("this", {defined: true}) // TODO do we need this anyway?
+
+    let ctx = List.reduce(methods, ctx, (ctx, method) => {
+      let (ctx, prevFunKind) = enterFunOrMethod(ctx, method.name == "init" ? Init : Method)
+      let ctx = beginScope(ctx)
+      List.forEach(method.parameters, param => {
+        declare(ctx, param, stmt.stmtLoc)
+        define(ctx, param)
+      })
+      let ctx = resolveStmts(ctx, method.body)
+      let ctx = endScope(ctx)
+      let ctx = exitFunOrMethod(ctx, prevFunKind)
+
+      ctx
+    })
+
+    let ctx = endScope(ctx)
+    let ctx = exitClass(ctx, prevClassKind)
+
+    ctx
   }
 
 and resolveStmts = (ctx, stmts) => stmts->List.reduce(ctx, resolveStmt)
@@ -158,7 +213,38 @@ and resolveExpr = (ctx, expr) =>
     ctx
 
   | ExprUnary(_, right) => resolveExpr(ctx, right)
-  | _ => ctx // TODO
+  | ExprConditional(condition, then, else_) =>
+    let ctx = resolveExpr(ctx, condition)
+    let ctx = resolveExpr(ctx, then)
+    let ctx = resolveExpr(ctx, else_)
+    ctx
+
+  | ExprGet(object, _) => resolveExpr(ctx, object)
+  | ExprSet(object, _, value) =>
+    let ctx = resolveExpr(ctx, value)
+    let ctx = resolveExpr(ctx, object)
+    ctx
+
+  | ExprThis =>
+    if ctx.classKind == NoClass {
+      raise(AnalyzeError("Can't use 'this' outside of a class.", expr.exprLoc, Some("this")))
+    }
+
+    resolveLocal(ctx, "this")
+  | ExprSuper(_) =>
+    switch ctx.classKind {
+    | NoClass =>
+      raise(AnalyzeError("Can't use 'super' outside of a class.", expr.exprLoc, Some("super")))
+    | InClass(Class) =>
+      raise(
+        AnalyzeError(
+          "Can't use 'super' in a class with no superclass.",
+          expr.exprLoc,
+          Some("super"),
+        ),
+      )
+    | InClass(SubClass) => resolveLocal(ctx, "super")
+    }
   }
 and resolveLocal = (ctx, _name) => {
   // maybe Remove this TODO
